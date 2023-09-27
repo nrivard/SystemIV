@@ -9,11 +9,11 @@ ASM_OBJECTS=$(patsubst ./src/%, ./obj/%,$(patsubst %.s, %.os, $(ASM_FILES)))
 
 all: 
 	@mkdir -p obj
-	@$(MAKE) startup
+	@$(MAKE) bootloader
 
-startup: $(ASM_OBJECTS)
+bootloader: $(ASM_OBJECTS)
 	@$(LD) -nostdlib $^ -o startup.o
-	@$(OBJCOPY) -O binary startup.o startup
+	@$(OBJCOPY) -O binary startup.o SystemN8.dsk
 	@truncate -s 4096 startup
 
 obj/%.os: src/%.s
