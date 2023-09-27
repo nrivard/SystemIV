@@ -10,10 +10,13 @@
 ;         https://github.com/torvalds/linux/tree/master/arch/m68k/mac
 
 ; The ROM loads this many bytes from the start of the disk.
+
+    public _start
+
 stage1_size = 1024
 
 ; Macro to define a Pascal string
-Str15 macro
+    macro Str15
         dc.b    \?1-2, \1               ; arg count includes both '"' chars for some reason
         cnop    15-(\?1-2),1            ; so correct both incorrect counts by subtracting them
     endm
@@ -39,7 +42,7 @@ Heap128K:    dc.l   $00004300          ; system heap size on 128K Mac */
 Heap256K:    dc.l   $00008000          ; used internally */
 SysHeapSize: dc.l   $00020000          ; system heap size on all machines */
 
-_start::
+_start:
     ; Now running your code with full privs, what more do you want? ;)
     move.l  #$BEEF,d0  ; Error code for the Sad Mac screen
     dc.w    $A9C9      ; Call the SysError trap
