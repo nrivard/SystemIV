@@ -15,7 +15,7 @@
 
 stage1_size = 1024
 
-; Macro to define a Pascal string
+    ; Macro to define a Pascal string
     macro Str15
         dc.b    \?1-2, \1               ; arg count includes both '"' chars for some reason
         cnop    15-(\?1-2),1            ; so correct both incorrect counts by subtracting them
