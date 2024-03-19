@@ -37,3 +37,6 @@ $(BINARY_EVEN): $(BINARY)
 
 $(BINARY_ODD): $(BINARY)
 	srec_cat -output $(BINARY_ODD) -Binary $(BINARY) -Binary -Split 2 1
+
+clean:
+	rm $(ASM_OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD)
