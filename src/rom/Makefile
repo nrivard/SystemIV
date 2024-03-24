@@ -3,34 +3,33 @@ EXT=rom
 BINARY=$(NAME).$(EXT)
 BINARY_EVEN=$(NAME).even.$(EXT)
 BINARY_ODD=$(NAME).odd.$(EXT)
+MAPFILE=$(NAME).map
 
 AS=vasmm68k_mot
 CC=m68k-elf-gcc
 LD=m68k-elf-ld
 OBJCOPY=m68k-elf-objcopy
 
-ASFLAGS=-Felf
+ASFLAGS=-Felf -quiet
 CFLAGS=-I ./src -march=68000 -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -Wall
+LDFLAGS=-T linker.ld -Map=$(MAPFILE)
 
-ASM_FILES=$(shell find ./ -name "*.s")
-ASM_OBJECTS=$(patsubst ./%, ./obj/%,$(patsubst %.s, %.os, $(ASM_FILES)))
+OBJECTS=startup.o mfp.o
 
 all: 
 	@mkdir -p obj
 	@$(MAKE) roms
 
-$(BINARY): $(ASM_OBJECTS)
-	@$(LD) -nostdlib $^ -o startup.o
-	@$(OBJCOPY) -O binary startup.o $(BINARY)
-	@truncate -s 1M $(BINARY)
+$(BINARY): $(OBJECTS)
+	@$(LD) $(LDFLAGS) -nostdlib $^ -o kernel.a
+	@$(OBJCOPY) -O binary kernel.a $(BINARY)
 
-$(ASM_OBJECTS): $(ASM_FILES)
-	@echo "    AS $<"
-	@mkdir -p $(dir $@)
+%.o: %.s 
+	@echo "Assembling...$<"
 	@$(AS) $(ASFLAGS) -o $@ $<
 
 roms: $(BINARY_EVEN) $(BINARY_ODD)
-	@echo "    Creating roms"
+	@echo "Creating roms..."
 
 $(BINARY_EVEN): $(BINARY)
 	srec_cat -output $(BINARY_EVEN) -Binary $(BINARY) -Binary -Split 2 0
@@ -39,4 +38,4 @@ $(BINARY_ODD): $(BINARY)
 	srec_cat -output $(BINARY_ODD) -Binary $(BINARY) -Binary -Split 2 1
 
 clean:
-	rm $(ASM_OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD)
+	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD)

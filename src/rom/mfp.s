@@ -1,3 +1,6 @@
+    section text
+
+    public MFPInit, MFPSend, MFPReceive, MFP_GPIP
 
 MFP_BASE    equ $E00001
 MFP_GPIP    equ MFP_BASE+($00<<1)
@@ -47,3 +50,6 @@ MFPReceive:
     move.b  MFP_UDR,D0
 .Done:
     rts
+
+MFPSendByte:
+    
