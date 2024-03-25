@@ -33,11 +33,21 @@ VectorsEnd:
 VectorCount: equ (VectorsEnd-Vectors)/4 ; 256 longwords
 
 Start:
+    lea.l   Vectors,A0                  ; copy vectors into RAM (overlay should have triggered)
+    lea.l   $000000,A1
+    move.w  #(VectorCount-1),D0         ; number of longwords to copy (should be $100...)
+.VectorLoop:
+    move.l  (A0)+,(A1)+                 ; copy contents pointed at by A0 into A1 and post-increment both pointers
+    dbra    D0,.VectorLoop
+.Done:
+    jsr Listen
+
+Listen:
     jsr MFPInit
 .Echo:
     jsr MFPReceive
     jsr MFPSend
-    bchg #(7),MFP_GPIP      ; toggle LED bit
+    bchg #(7),MFP_GPIP                  ; toggle LED bit
     bra.s .Echo
 
 HandleBusError:

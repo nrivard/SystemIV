@@ -1,6 +1,6 @@
     section text
 
-    public MFPInit, MFPSend, MFPReceive, MFP_GPIP
+    public MFPInit, MFPSend, MFPReceive, MFPSendByte, MFP_GPIP
 
 MFP_BASE    equ $E00001
 MFP_GPIP    equ MFP_BASE+($00<<1)
@@ -52,4 +52,23 @@ MFPReceive:
     rts
 
 MFPSendByte:
-    
+    move.l  D0,-(A7)        ; save D0
+.UpperNibble:
+    lsr.b   #4,D0           ; upper nibble
+    jsr NibbleToAscii
+    jsr MFPSend
+.LowerNibble:
+    move.l  (A7)+,D0        ; restore D0
+    jsr NibbleToAscii
+    jsr MFPSend
+.Done:
+    rts
+
+NibbleToAscii:
+    and.b   #$0F,D0
+    ori.b   #'0',D0
+    cmpi.b  #('9'+1),D0     ; digit?
+    bcs     .Done
+    addq.b  #$07,D0         ; 'A' - '9' - 1
+.Done:
+    rts

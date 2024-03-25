@@ -5,16 +5,18 @@ BINARY_EVEN=$(NAME).even.$(EXT)
 BINARY_ODD=$(NAME).odd.$(EXT)
 MAPFILE=$(NAME).map
 
+CPU?=68000
+
 AS=vasmm68k_mot
 CC=m68k-elf-gcc
 LD=m68k-elf-ld
 OBJCOPY=m68k-elf-objcopy
 
-ASFLAGS=-Felf -quiet
-CFLAGS=-I ./src -march=68000 -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -Wall
+ASFLAGS=-Felf -quiet -align -esc
+CFLAGS=-I ./src -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -Wall
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
 
-OBJECTS=startup.o mfp.o
+OBJECTS=startup.o mfp.o shellular.o
 
 all: 
 	@mkdir -p obj
@@ -38,4 +40,4 @@ $(BINARY_ODD): $(BINARY)
 	srec_cat -output $(BINARY_ODD) -Binary $(BINARY) -Binary -Split 2 1
 
 clean:
-	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD)
+	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) kernel.a

@@ -32,6 +32,9 @@
 *.hex
 *.dsk
 
+# Binaries
+*.rom
+
 # Debug files
 *.dSYM/
 *.su

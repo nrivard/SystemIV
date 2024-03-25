@@ -7,7 +7,7 @@ MEMORY
 {
   	RAM	: org = 0x00000000, l = 1M
   	ROM	: org = 0x00400000, l = 1M
-	XPN	: org = 0x00800000, l = 1M
+	  XPN	: org = 0x00800000, l = 1M
   	MFP	: org = 0x00E00000, l = 1M
 }
 
@@ -15,7 +15,7 @@ MEMORY
 MEMORY
 {
 	VECTORS	: org = 0x00000000, l = 0x000400,
-	OS		: org = 0x00000400, l = 0x000100,
+	OS		: org = 0x00000400, l = 0x000200,
 	USER	: org = ORIGIN(OS) + LENGTH(OS), l = ORIGIN(RAM) + LENGTH(RAM) - ORIGIN(USER)
 }
 
