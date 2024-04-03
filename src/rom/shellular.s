@@ -1,6 +1,6 @@
-    section text
+    section .text
 
-    public ShellularMain
+    public ShellularMain, SendString
 
 ShellularMain:
     jsr     MFPReceive          ; flush line
@@ -30,10 +30,10 @@ ShellularMain:
 ;   D0: number of tokens found
 ;   A0: pointer to position _after_ CRLF
 ;   Note: This routine MODIFIES the buffer, replacing spaces with null-terminators!
-;   A1: pointer to an array of pointers
+;   A1: pointer to an array of 8 pointers
 ;   Note: Use D0 to understand which indexes in table are valid pointers to tokens!
 ShellTokenizeBuffer:
-    move.l  D1,-(A7)            ; save D1
+    move.l  D1,-(SP)            ; save D1
     clr.l   D0                  ; 0 tokens processed at start
 .TokenLoop:
     move.l  A0,(A1,D0)          ; copy current value of A0 into ptr array indexed by D0
@@ -51,7 +51,7 @@ ShellTokenizeBuffer:
     bne     .TokenLoop
 .Done:
     lsr     #2,D0               ; convert to number of tokens, not how big tokens are
-    move.l  (A7)+,D1            ; restore D1
+    move.l  (SP)+,D1            ; restore D1
     rts
 
 ShellRunCommand:
@@ -59,25 +59,25 @@ ShellRunCommand:
 ; Params:
 ;   A0: null-terminated string to send
 ; return
-;   A0: pointer to position _after_ null-termintor
+;   A0: pointer to position _after_ null-terminator
 SendString:
-    move.l  D0,-(A7)            ; save D0
+    move.l  D0,-(SP)            ; save D0
 .Loop:
     move.b  (A0)+,D0
     beq     .Done               ; null terminator
     jsr     MFPSend
     bra.s   .Loop
 .Done:
-    move.l  (A7)+,D0            ; restore D0
+    move.l  (SP)+,D0            ; restore D0
     rts
 
-    section bss
+    section .bss
 
-ShellCmdBuffer:     ds.b    $80     ; command buffer
-ShellTokenTable:    ds.b    $20     ; table of pointers to tokens, up to 8 tokens
-ShellSendTokens_DBG: ds.b   $00     ; if non-zero, echo parsed tokens
+ShellCmdBuffer:         ds.b    $80     ; command buffer
+ShellTokenTable:        ds.l    $08     ; table of pointers to tokens, up to 8 tokens
+ShellSendTokens_DBG:    ds.w    $01     ; if non-zero, echo parsed tokens
 
-    section rodata
+    section .rodata
 
 ASCII_CR        equ     $0D
 ASCII_LF        equ     $0A

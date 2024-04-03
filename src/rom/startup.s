@@ -1,6 +1,8 @@
-    section text
+    section .text
 
-    public Start
+    public Start, HandleTick
+
+SystemClockHz   equ     100
 
 Vectors:
     dc.l    $100000                     ; $00: reset SP
@@ -35,20 +37,31 @@ VectorCount: equ (VectorsEnd-Vectors)/4 ; 256 longwords
 Start:
     lea.l   Vectors,A0                  ; copy vectors into RAM (overlay should have triggered)
     lea.l   $000000,A1
-    move.w  #(VectorCount-1),D0         ; number of longwords to copy (should be $100...)
+    move.l  #(VectorCount-1),D0         ; number of longwords to copy (should be $100...)
 .VectorLoop:
     move.l  (A0)+,(A1)+                 ; copy contents pointed at by A0 into A1 and post-increment both pointers
     dbra    D0,.VectorLoop
+.InitSystem:
+    bsr.w   SystemInit
+    jsr     MFPInit
+    lea.l   SystemBoot,A0
+    jsr     SendString
+.InterruptTest:
+    lea.l   HandleTick,A0               ; copy HandleTick to timer c vector
+    lea.l   MFP_VEC_TIMER_C,A1
+    move.l  A0,(A1)
+    ; lea.l   $0,A0
+    ; move.l  #$400,D0
+    ; jsr     Dump
+    bset.b  #5,MFP_IMRB                 ; enable timer c interrupts
+    and.w   #$F8FF,SR                   ; enable all interrupts
 .Done:
-    jsr Listen
+    jmp .Done
 
-Listen:
-    jsr MFPInit
-.Echo:
-    jsr MFPReceive
-    jsr MFPSend
-    bchg #(7),MFP_GPIP                  ; toggle LED bit
-    bra.s .Echo
+SystemInit:
+    move.b  #SystemClockHz,SystemJiffies
+    clr.l   SystemUptime
+    rts
 
 HandleBusError:
 HandleAddrError:
@@ -56,3 +69,60 @@ HandleIllegalInstr:
 HandleGenericInterrupt:
 HandleDebug:
 HandleTrap14:
+    lea.l   IRQError,A0
+    jsr     SendString
+    rte
+
+HandleTick:
+    move.l  D0,-(SP)
+    move.b  SystemJiffies,D0
+    subq.b  #1,D0
+    bne     .Done
+.ResetJiffies:
+    move.l  D0,-(SP)
+    move.b  #'*',D0
+    jsr     MFPSend
+    move.l  (SP)+,D0
+    move.b  #SystemClockHz,D0
+    addi.l  #1,SystemUptime
+.Done:
+    move.b  D0,SystemJiffies                ; write the jiffies value
+    move.b  #MFP_IRQ_TIMER_C_MASK,MFP_ISRB  ; ack the interrupt
+    move.l  (SP)+,D0
+    rte
+
+; D0: number of bytes to print
+; A0: pointer to block of bytes to print
+Dump:
+    movem.l D2-D1,-(SP)
+    move.l  D0,D1
+    subq.l  #1,D1
+    moveq.l #7,D2
+.Loop:
+    move.b  (A0)+,D0
+    jsr     MFPSendByte
+    move.b  #' ',D0
+    jsr     MFPSend
+    dbra    D1,.NewLine
+    bra.s   .Done
+.NewLine:
+    dbra    D2,.Loop                        ; new line?
+    move.b  #$0D,D0
+    jsr     MFPSend
+    move.b  #$0A,D0
+    jsr     MFPSend
+    move.l  #7,D2
+    bra.s   .Loop
+.Done:
+    movem.l  (SP)+,D1-D2
+    rts
+
+    section .bss
+
+SystemJiffies:  ds.b    $01
+SystemUptime:   ds.l    $01
+
+    section .rodata
+
+IRQError:   dc.b    "IRQ Error!", $0D, $0A, 0
+SystemBoot: dc.b    "System booting...", $0D, $0A, 0
