@@ -25,7 +25,7 @@ ShellularMain:
 
 ; params:
 ;   A0: pointer to CRLF terminated buffer of space separated tokens
-;   A1: pointer to an array of 8 pointers (32 bytes)
+;   A1: pointer to an allocated array of 8 pointers (32 bytes)
 ; return:
 ;   D0: number of tokens found
 ;   A0: pointer to position _after_ CRLF
