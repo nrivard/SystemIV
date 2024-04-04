@@ -19,7 +19,8 @@ ShellularMain:
     bne     .WaitForInput
 .ProcessCommand:
     jsr     ShellTokenizeBuffer
-    jsr     ShellRunCommand
+    movea.l A1,A0               ; move pointer to tokenized buffer to A0
+    jsr     ShellParseCommand
 .Done:
     bra.s   .GetCommand
 
@@ -54,7 +55,18 @@ ShellTokenizeBuffer:
     move.l  (SP)+,D1            ; restore D1
     rts
 
-ShellRunCommand:
+; params:
+;   A0: pointer to tokenized buffer
+ShellParseCommand:
+    lea.l   ShellCmdTable,A1    ; loop over the command table
+    clr.l   D1                  ; D1 will be our index into the commaand table
+
+
+ShellRead:
+ShellWrite:
+ShellExecute:
+ShellTransfer:
+
 
 ; Params:
 ;   A0: null-terminated string to send
@@ -81,6 +93,20 @@ ShellSendTokens_DBG:    ds.w    $01     ; if non-zero, echo parsed tokens
 
 ASCII_CR        equ     $0D
 ASCII_LF        equ     $0A
+
+; offsets into the `ShellCmdTable` "struct"
+CMD             equ     $00
+FUNC            equ     $02
+
+ShellCmdTable:  dc.b    "rd"
+                dc.l    ShellRead
+                dc.b    "wr"
+                dc.l    ShellWrite
+                dc.b    "tx"
+                dc.l    ShellTransfer
+                dc.b    "ex"
+                dc.l    ShellExecute
+ShellCmdTableEnd:
 
 ShellVersion    equ     $01
 ShellWelcome:   dc.b    "Shellular v", ShellVersion, "\r\n", $00
