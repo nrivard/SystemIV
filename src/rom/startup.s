@@ -124,5 +124,5 @@ SystemUptime:   ds.l    $01
 
     section .rodata
 
-IRQError:   dc.b    "IRQ Error!", $0D, $0A, 0
-SystemBoot: dc.b    "System booting...", $0D, $0A, 0
+IRQError:   dc.b    "IRQ Error!\r\n", 0
+SystemBoot: dc.b    "System booting...\r\n", 0
