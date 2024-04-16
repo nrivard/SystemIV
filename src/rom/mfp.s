@@ -1,6 +1,6 @@
     section .text
 
-    public MFPInit, MFPSend, MFPReceive, MFPSendByte, MFP_GPIP, MFP_VECBASE, MFP_IMRB, MFP_ISRB, MFP_IRQ_TIMER_C, MFP_VEC_TIMER_C
+    public MFP_GPIP, MFP_VECBASE, MFP_IMRB, MFP_ISRB, MFP_IRQ_TIMER_C, MFP_VEC_TIMER_C
 
 MFP_BASE                        equ $E00001
 MFP_GPIP                        equ MFP_BASE+($00<<1)
@@ -38,7 +38,7 @@ MFP_IRQ_TIMER_C_MASK::          equ     ~MFP_IRQ_TIMER_C
 
 MFP_VEC_TIMER_C                 equ     ((MFP_VECBASE+$05)*4)   ; 5th vector, longword size
 
-MFPInit:
+MFPInit::
     move.b  #$FE,MFP_DDR                                        ; set all but bit 0 of GPIO as outputs
 .Timer:                                                         ;         CLK     | prescale | UCR bit 7 | timer value | RC toggle
     move.b  #$B8,MFP_TCDR                                       ;  100 = (3686400 / 200      / n/a       / 184         / 1) IRQ on each transition!
@@ -54,7 +54,7 @@ MFPInit:
     rts
 
 ; Sends char in D0
-MFPSend:
+MFPSend::
     tst.b   MFP_TSR     ; ready to send?
     bpl     MFPSend
 .Send:
@@ -63,7 +63,7 @@ MFPSend:
     rts
 
 ; Receives char in D0
-MFPReceive:
+MFPReceive::
     tst.b   MFP_RSR     ; ready to receive?
     bpl     MFPReceive
 .Recv:
@@ -71,24 +71,85 @@ MFPReceive:
 .Done:
     rts
 
-MFPSendByte:
+; params:
+;   D0: the long to convert to ascii and send
+MFPSendLong::
+    movem.l D0-D1,-(SP)
+    move.l  #3,D1
+.Loop:
+    rol.l   #8,D0
+    jsr     MFPSendByte
+    dbra    D1,.Loop
+.Done:
+    movem.l (SP)+,D0-D1
+    rts
+
+; params:
+;   D0: the byte to convert to ascii and send
+MFPSendByte::
     move.l  D0,-(SP)        ; save D0
 .UpperNibble:
     lsr.b   #4,D0           ; upper nibble
     jsr NibbleToAscii
     jsr MFPSend
 .LowerNibble:
-    move.l  (SP)+,D0        ; restore D0
+    move.l  (SP),D0        ; re-use D0
     jsr NibbleToAscii
     jsr MFPSend
 .Done:
+    move.l  (SP)+,D0        ; restore D0
     rts
 
-NibbleToAscii:
+NibbleToAscii::
     and.b   #$0F,D0
     ori.b   #'0',D0
     cmpi.b  #('9'+1),D0     ; digit?
     bcs     .Done
     addq.b  #$07,D0         ; 'A' - '9' - 1
+.Done:
+    rts
+
+; params:
+;   A0: ptr to string
+; returns:
+;   D0: long value
+HexStringToLong::
+    movem.l D2-D3,-(SP)
+    pea.l   (A0)
+    jsr     strlen
+    move.l  (SP)+,A0
+    cmp.b   #8,D0               ; string greater than 8 digits?
+    bgt     .Done
+    move.b  D0,D2               ; move string index to D2 (reversing thru string)
+    subq.b  #1,D2               ; fix index
+    clr.l   D3                  ; clear our running result
+    clr.b   D1                  ; clear our shift
+.Loop:
+    move.b  (A0,D2),D0
+    and.l   #$FF,D0             ; clear upper bits
+    jsr     CharToByte
+    lsl.l   D1,D0
+    or.l    D0,D3
+    addq.b  #4,D1               ; increase the shift by 4
+    subq.b  #1,D2
+    bpl     .Loop
+.Done:
+    move.l  D3,D0
+    movem.l (SP)+,D2-D3
+    rts
+
+; params:
+;   D0: char to convert to ascii (only operates on byte)
+; returns:
+;   D0: ascii value of the byte (only updates byte)
+;   NOTE: will return invalid ascii if char was not a number!
+CharToByte::
+    sub.b   #'0',D0     ; check 0...9
+    cmp.b   #$0A,D0
+    blt     .Done
+    sub.b   #$07,D0     ; 'A' - '9' - 1
+    cmp.b   #$10,D0     ; check A...F
+    blt     .Done
+    sub.b   #$20,D0     ; 'a' - 'A'
 .Done:
     rts

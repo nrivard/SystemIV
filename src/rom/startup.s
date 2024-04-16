@@ -50,13 +50,10 @@ Start:
     lea.l   HandleTick,A0               ; copy HandleTick to timer c vector
     lea.l   MFP_VEC_TIMER_C,A1
     move.l  A0,(A1)
-    ; lea.l   $0,A0
-    ; move.l  #$400,D0
-    ; jsr     Dump
     bset.b  #5,MFP_IMRB                 ; enable timer c interrupts
     and.w   #$F8FF,SR                   ; enable all interrupts
 .Done:
-    jmp .Done
+    jsr     ShellularMain
 
 SystemInit:
     move.b  #SystemClockHz,SystemJiffies
@@ -64,7 +61,26 @@ SystemInit:
     rts
 
 HandleBusError:
+    lea.l   IRQBusErr,A0
+    jsr     SendString
+    bra.s   PrintExceptionInfo
 HandleAddrError:
+    lea.l   IRQAddrErr,A0
+    jsr     SendString
+PrintExceptionInfo:
+    move.l  #13,D1                      ; how many bytes we're sending
+.Loop:
+    btst    #0,D1
+    beq     .Print
+    lea.l   ShellEOL,A0
+    jsr     SendString
+.Print:
+    move.b  (SP)+,D0
+    jsr     MFPSendByte
+    dbra    D1,.Loop
+.Done:
+    bra.s   .Done                       ; we're cooked so start loopin'
+
 HandleIllegalInstr:
 HandleGenericInterrupt:
 HandleDebug:
@@ -79,10 +95,6 @@ HandleTick:
     subq.b  #1,D0
     bne     .Done
 .ResetJiffies:
-    move.l  D0,-(SP)
-    move.b  #'*',D0
-    jsr     MFPSend
-    move.l  (SP)+,D0
     move.b  #SystemClockHz,D0
     addi.l  #1,SystemUptime
 .Done:
@@ -91,32 +103,6 @@ HandleTick:
     move.l  (SP)+,D0
     rte
 
-; D0: number of bytes to print
-; A0: pointer to block of bytes to print
-Dump:
-    movem.l D2-D1,-(SP)
-    move.l  D0,D1
-    subq.l  #1,D1
-    moveq.l #7,D2
-.Loop:
-    move.b  (A0)+,D0
-    jsr     MFPSendByte
-    move.b  #' ',D0
-    jsr     MFPSend
-    dbra    D1,.NewLine
-    bra.s   .Done
-.NewLine:
-    dbra    D2,.Loop                        ; new line?
-    move.b  #$0D,D0
-    jsr     MFPSend
-    move.b  #$0A,D0
-    jsr     MFPSend
-    move.l  #7,D2
-    bra.s   .Loop
-.Done:
-    movem.l  (SP)+,D1-D2
-    rts
-
     section .bss
 
 SystemJiffies:  ds.b    $01
@@ -124,5 +110,7 @@ SystemUptime:   ds.l    $01
 
     section .rodata
 
-IRQError:   dc.b    "IRQ Error!\r\n", 0
+IRQError:   dc.b    "IRQ Error!\r\n\0"
+IRQBusErr:  dc.b    "Bus Error!\r\n\0"
+IRQAddrErr: dc.b    "Addr Error!\r\n\0"
 SystemBoot: dc.b    "System booting...\r\n", 0
