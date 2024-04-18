@@ -25,7 +25,7 @@ ShellularMain:
     tst.l   D0
     bne     .InvalidCommand
     lea.l   ShellUserInput,A0
-    move.l  FUNC(A1),A2
+    move.l  FUNC(A1),A2         ; userInput->function()
     jsr     (A2)
     tst.l   D0
     beq     .Done
@@ -80,6 +80,7 @@ ShellTokenizeBuffer:
 ;   D0: non-zero if valid Command found, 0 if not
 ;   A1: pointer to Command
 ShellParseCommand:
+    movem.l A2-A4,-(SP)
     move.l  (A0),A3             ; let's use A3 here
     lea.l   ShellCmdTable,A2    ; loop over the command table
     lea.l   ShellCmdTableEnd,A4 ; faster comparison
@@ -94,6 +95,7 @@ ShellParseCommand:
     bne     .Loop
 .Done:
     move.l  A2,A1               ; move command pointer to A1
+    movem.l (SP)+,A2-A4
     rts
 
 ; params:
@@ -101,13 +103,14 @@ ShellParseCommand:
 ; returns:
 ;   D0: zero if successful, nonzero if error
 ShellRead:
+    movem.l D2/A2-A5,-(SP)
     move.l  A0,A5               ; move user input to A5
     clr.l   D2
     move.b  NUMTOKENS(A5),D2
     subq.b  #1,D2               ; ignore first param since it's command name
     bne     .ParseAddr          ; need at least a starting address
     moveq.l #1,D0               ; error! no addr param
-    rts
+    bra.s   .Done
 .ParseAddr:
     move.l  4(A5),A0            ; address param
     move.l  A0,D0
@@ -118,6 +121,7 @@ ShellRead:
     jsr     MFPSendLong
     move.b  #' ',D0
     jsr     MFPSend
+    ;;; DEBUG
 
     cmp.b   #1,D2               ; is there length param?
     ble     .PrintMem           ; if not provided, just print 1 addr (already in D1)
@@ -131,6 +135,7 @@ ShellRead:
     jsr     MFPSendByte
     lea.l   ShellEOL,A0
     jsr     SendString
+    ;;; DEBUG
 
     clr.l   D1
 .Loop:
@@ -149,11 +154,45 @@ ShellRead:
 .LoopCheck:
     cmp.l   D2,D1               ; index < length?
     blt     .Loop
-.Done:
     clr.l   D0                  ; success
+.Done:
+    movem.l (SP)+,D2/A2-A5
     rts
 
+; params:
+;   A0: ptr to ShellUserInput
+; returns:
+;   D0: zero if successful, nonzero if error
 ShellWrite:
+    movem.l D2/A2-A5,-(SP)
+    move.l  A0,A5               ; move user input to A5
+    clr.l   D2
+    move.b  NUMTOKENS(A5),D2
+    cmp.b   #3,D2
+    bge     .ParseAddr          ; need at least a starting address and one byte
+    moveq.l #1,D0               ; error! no addr param
+    bra.s   .Done
+.ParseAddr:
+    move.l  4(A5),A0            ; address param
+    move.l  A0,D0
+    jsr     HexStringToLong     ; value in D0
+    move.l  D0,A4               ; address to read from will be in A4
+
+    ;;; DEBUG
+    jsr     MFPSendLong
+    move.b  #' ',D0
+    jsr     MFPSend
+
+    subq.l  #3,D2               ; number of bytes - 1 to be written for dbra
+    move.l  8(A5),A3            ; pointer to first byte string to be written
+.WriteLoop:
+    move.l  A3,A0
+    jsr     HexStringToLong
+    clr.l   D0                  ; success
+.Done:
+    movem.l (SP)+,D2/A2-A5
+    rts
+
 ShellExecute:
 ShellTransfer:
 

@@ -13,7 +13,7 @@ LD=m68k-elf-ld
 OBJCOPY=m68k-elf-objcopy
 
 ASFLAGS=-Felf -quiet -align -esc
-CFLAGS=-I ./src -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -Wall
+CFLAGS=-I ./src -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -fno-delete-null-pointer-checks -Wall
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
 
 OBJECTS=startup.o mfp.o shellular.o
