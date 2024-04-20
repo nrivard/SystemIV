@@ -218,45 +218,6 @@ ShellDebugTokens:
     jsr     SendString
     movem.l (SP)+,D0-D7/A0-A7   ; restore all registers
     rts
-
-; Params:
-;   A0: null-terminated string to send
-; return
-;   A0: pointer to position _after_ null-terminator
-SendString:
-    move.l  D0,-(SP)            ; save D0
-.Loop:
-    move.b  (A0)+,D0
-    beq     .Done               ; null terminator
-    jsr     MFPSend
-    bra.s   .Loop
-.Done:
-    move.l  (SP)+,D0            ; restore D0
-    rts
-
-; params:
-strcmp::
-    move.l  8(sp),A1            ; str2
-    move.l  4(sp),A0            ; str1
-    clr.l   D0
-    clr.l   D1
-.Loop:
-    move.b  (A0)+,D0            ; load str1 into D0
-    beq.s   .EndStr1
-    move.b  (A1)+,D1            ; load str2 into D0
-    beq.s   .EndStr2
-    sub.l   D1,D0               ; sub d1 from d0
-    beq     .Loop
-    bra.s   .Done
-.EndStr1:
-    tst.b   (A1)+
-    beq     .Done
-    move.l  #-1,D0              ; str2 is longer so "greater"
-    bra     .Done
-.EndStr2:
-    move.l  #1,D0               ; can only get here if str1 wasn't zero but str2 is, so str1 is "greater"
-.Done:
-    rts
     
 strlen::
     move.l  4(SP),A0

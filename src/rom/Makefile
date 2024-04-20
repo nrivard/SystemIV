@@ -1,3 +1,5 @@
+rwildcard=$(wildcard $1) $(foreach d,$1,$(call rwildcard,$(addsuffix /$(notdir $d),$(wildcard $(dir $d)*))))
+
 NAME=SystemN8
 EXT=rom
 BINARY=$(NAME).$(EXT)
@@ -13,22 +15,30 @@ LD=m68k-elf-ld
 OBJCOPY=m68k-elf-objcopy
 
 ASFLAGS=-Felf -quiet -align -esc
-CFLAGS=-I ./src -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -fno-delete-null-pointer-checks -Wall
+CFLAGS=-I ./include -I ./cstdlib/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
 
-OBJECTS=startup.o mfp.o shellular.o
+# Assume source files in Makefile directory are source files for project
+CSOURCES=$(call rwildcard,*.c)
+ASMSOURCES=$(call rwildcard,*.s)
+INCLUDES=$(call rwildcard,*.h)
+SOURCES=$(ASMSOURCES) $(CSOURCES)
 
-all: 
-	@mkdir -p obj
+# Assume each source files makes an object file
+OBJECTS=$(addsuffix .o,$(basename $(SOURCES)))
+
+%.o : %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+%.o: %.s 
+	$(AS) $(ASFLAGS) -o $@ $<
+
+all: $(BINARY) $(INCLUDES)
 	@$(MAKE) roms
 
 $(BINARY): $(OBJECTS)
-	@$(LD) $(LDFLAGS) -nostdlib $^ -o kernel.a
-	@$(OBJCOPY) -O binary kernel.a $(BINARY)
-
-%.o: %.s 
-	@echo "Assembling...$<"
-	@$(AS) $(ASFLAGS) -o $@ $<
+	@$(LD) $(LDFLAGS) -nostdlib $^ -o bootloader.a
+	@$(OBJCOPY) -O binary bootloader.a $(BINARY)
 
 roms: $(BINARY_EVEN) $(BINARY_ODD)
 	@echo "Creating roms..."
@@ -40,4 +50,4 @@ $(BINARY_ODD): $(BINARY)
 	srec_cat -output $(BINARY_ODD) -Binary $(BINARY) -Binary -Split 2 1
 
 clean:
-	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) kernel.a
+	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) bootloader.a

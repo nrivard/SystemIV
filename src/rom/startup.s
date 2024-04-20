@@ -1,12 +1,10 @@
-    section .text
-
-    public Start, HandleTick
-
 SystemClockHz   equ     100
 
-Vectors:
+    section .vectors
+
+Vectors::
     dc.l    $100000                     ; $00: reset SP
-    dc.l    Start                       ; $01: reset PC
+    dc.l    START                       ; $01: reset PC
     dc.l    HandleBusError              ; $02: bus error handler
     dc.l    HandleAddrError             ; $03: misaligned memory access
     dc.l    HandleIllegalInstr          ; $04: illegal instruction handler
@@ -34,16 +32,20 @@ Vectors:
 VectorsEnd:
 VectorCount: equ (VectorsEnd-Vectors)/4 ; 256 longwords
 
-Start:
+    section .text
+
+START::
+    or.w    #$0700,SR                   ; Disable interrupts
+.CopyVectors:
     lea.l   Vectors,A0                  ; copy vectors into RAM (overlay should have triggered)
-    lea.l   $000000,A1
+    lea.l   VECT_START,A1
     move.l  #(VectorCount-1),D0         ; number of longwords to copy (should be $100...)
 .VectorLoop:
     move.l  (A0)+,(A1)+                 ; copy contents pointed at by A0 into A1 and post-increment both pointers
     dbra    D0,.VectorLoop
 .InitSystem:
-    bsr.w   SystemInit
-    jsr     MFPInit
+    bsr.w   SYSINIT
+    jsr     MFPINIT
     lea.l   SystemBoot,A0
     jsr     SendString
 .InterruptTest:
@@ -53,11 +55,15 @@ Start:
     bset.b  #5,MFP_IMRB                 ; enable timer c interrupts
     and.w   #$F8FF,SR                   ; enable all interrupts
 .Done:
-    jsr     ShellularMain
+    jsr     sysmain
 
-SystemInit:
+SYSINIT:
     move.b  #SystemClockHz,SystemJiffies
     clr.l   SystemUptime
+    rts
+
+dumb::
+    move.b  #$69,D0
     rts
 
 HandleBusError:
@@ -68,16 +74,16 @@ HandleAddrError:
     lea.l   IRQAddrErr,A0
     jsr     SendString
 PrintExceptionInfo:
-    move.l  #13,D1                      ; how many bytes we're sending
-.Loop:
-    btst    #0,D1
-    beq     .Print
-    lea.l   ShellEOL,A0
-    jsr     SendString
-.Print:
-    move.b  (SP)+,D0
-    jsr     MFPSendByte
-    dbra    D1,.Loop
+;     move.l  #13,D1                      ; how many bytes we're sending
+; .Loop:
+;     btst    #0,D1
+;     beq     .Print
+;     lea.l   ShellEOL,A0
+;     jsr     SendString
+; .Print:
+;     move.b  (SP)+,D0
+;     jsr     MFPSendByte
+;     dbra    D1,.Loop
 .Done:
     bra.s   .Done                       ; we're cooked so start loopin'
 
@@ -103,10 +109,25 @@ HandleTick:
     move.l  (SP)+,D0
     rte
 
+; Params:
+;   A0: null-terminated string to send
+; return
+;   A0: pointer to position _after_ null-terminator
+SendString::
+    move.l  D0,-(SP)            ; save D0
+.Loop:
+    move.b  (A0)+,D0
+    beq     .Done               ; null terminator
+    jsr     MFPSEND
+    bra.s   .Loop
+.Done:
+    move.l  (SP)+,D0            ; restore D0
+    rts
+
     section .bss
 
-SystemJiffies:  ds.b    $01
-SystemUptime:   ds.l    $01
+SystemJiffies:: ds.b    $01
+SystemUptime::  ds.l    $01
 
     section .rodata
 
