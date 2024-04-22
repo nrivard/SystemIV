@@ -6,8 +6,7 @@
 #include "time.h"
 #include "shellac.h"
 #include "serial.h"
-
-extern int dumb();
+#include "xmodem.h"
 
 #define PARAM_SIZE 10
 
@@ -125,13 +124,20 @@ bool command_write(char *args[], int count) {
 }
 
 bool command_transfer(char *args[], int count) {
-    clock_t start = clock();
-    serial_put_long(start);
+    if (count < 1 || (strlen(args[0]) == 0)) {
+        return false;
+    }
 
-    while (!serial_byte_avail());
+    uint8_t *addr = (uint8_t *)strtoul(args[0], NULL, 16);
 
-    clock_t elapsed = clock() - start;
-    serial_put_long(elapsed);
+    serial_put_string("Waiting for XModem transfer...\r\nPress ESC to cancel\r\n");
+
+    int error = xmodem_recv(addr, 0x8000);
+
+    if (error) {
+        serial_put_hex(error);
+        serial_put_string("\r\n");
+    }
 
     return true;
 }

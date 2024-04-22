@@ -56,7 +56,7 @@ MFPINIT::
 ; C-interface to test if a byte is available
 mfp_byte_avail::
 ; Returns long value of zero if no byte avail, non-zero if byte is waiting
-MFPAVAIL::
+MFPBYTEAVAIL::
     move.b  MFP_RSR,D0
     andi.l  #$80,D0     ; mask all but buffer full bit
     rts

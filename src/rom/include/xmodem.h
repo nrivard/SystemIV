@@ -1,3 +1,5 @@
 #pragma once
 
-int xmodem_recv(const char *destination, int maxsize);
+#include <stdint.h>
+
+int xmodem_recv(uint8_t *destination, int maxsize);
