@@ -6,6 +6,8 @@ BINARY=$(NAME).$(EXT)
 BINARY_EVEN=$(NAME).even.$(EXT)
 BINARY_ODD=$(NAME).odd.$(EXT)
 MAPFILE=$(NAME).map
+DISASSEMBLY=$(NAME).dis
+ELF=bootloader.a
 
 CPU?=68000
 
@@ -13,6 +15,7 @@ AS=vasmm68k_mot
 CC=m68k-elf-gcc
 LD=m68k-elf-ld
 OBJCOPY=m68k-elf-objcopy
+OBJDUMP=m68k-elf-objdump
 
 ASFLAGS=-Felf -quiet -align -esc
 CFLAGS=-I ./include -I ./cstdlib/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
@@ -36,9 +39,11 @@ OBJECTS=$(addsuffix .o,$(basename $(SOURCES)))
 all: $(BINARY) $(INCLUDES)
 	@$(MAKE) roms
 
-$(BINARY): $(OBJECTS)
-	@$(LD) $(LDFLAGS) -nostdlib $^ -o bootloader.a
-	@$(OBJCOPY) -O binary bootloader.a $(BINARY)
+$(BINARY): $(ELF) $(DISASSEMBLY)
+	@$(OBJCOPY) -O binary $< $@
+
+$(ELF): $(OBJECTS)
+	@$(LD) $(LDFLAGS) -nostdlib $^ -o $(ELF)
 
 roms: $(BINARY_EVEN) $(BINARY_ODD)
 	@echo "Creating roms..."
@@ -49,5 +54,8 @@ $(BINARY_EVEN): $(BINARY)
 $(BINARY_ODD): $(BINARY)
 	srec_cat -output $(BINARY_ODD) -Binary $(BINARY) -Binary -Split 2 1
 
+$(DISASSEMBLY): $(ELF)
+	$(OBJDUMP) --disassemble -S $< > $@
+
 clean:
-	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) bootloader.a
+	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) $(ELF) $(DISASSEMBLY)

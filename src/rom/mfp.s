@@ -1,26 +1,24 @@
     section .text
 
-    public MFP_GPIP, MFP_VECBASE, MFP_IMRB, MFP_ISRB, MFP_IRQ_TIMER_C, MFP_VEC_TIMER_C
+    public MFP_VECBASE, MFP_IMRB, MFP_ISRB, MFP_IRQ_TIMER_C, MFP_VEC_TIMER_C
 
-MFP_BASE                        equ $E00001
-MFP_GPIP                        equ MFP_BASE+($00<<1)
-MFP_DDR                         equ MFP_BASE+($02<<1)
-MFP_IERA                        equ MFP_BASE+($03<<1)
-MFP_IERB                        equ MFP_BASE+($04<<1)
-MFP_ISRA                        equ MFP_BASE+($07<<1)
-MFP_ISRB                        equ MFP_BASE+($08<<1)
-MFP_IMRA                        equ MFP_BASE+($09<<1)
-MFP_IMRB                        equ MFP_BASE+($0A<<1)
-MFP_VR                          equ MFP_BASE+($0B<<1)
-MFP_TCDCR                       equ MFP_BASE+($0E<<1)
-MFP_TCDR                        equ MFP_BASE+($11<<1)
-MFP_TDDR                        equ MFP_BASE+($12<<1)
-MFP_UCR                         equ MFP_BASE+($14<<1)
-MFP_RSR                         equ MFP_BASE+($15<<1)
-MFP_TSR                         equ MFP_BASE+($16<<1)
-MFP_UDR                         equ MFP_BASE+($17<<1)
-
-MFP_VECBASE                     equ     $40
+MFP_BASE::                      equ     $E00001
+MFP_GPIP::                      equ     MFP_BASE+($00<<1)
+MFP_DDR::                       equ     MFP_BASE+($02<<1)
+MFP_IERA                        equ     MFP_BASE+($03<<1)
+MFP_IERB                        equ     MFP_BASE+($04<<1)
+MFP_ISRA                        equ     MFP_BASE+($07<<1)
+MFP_ISRB                        equ     MFP_BASE+($08<<1)
+MFP_IMRA                        equ     MFP_BASE+($09<<1)
+MFP_IMRB                        equ     MFP_BASE+($0A<<1)
+MFP_VR                          equ     MFP_BASE+($0B<<1)
+MFP_TCDCR                       equ     MFP_BASE+($0E<<1)
+MFP_TCDR                        equ     MFP_BASE+($11<<1)
+MFP_TDDR                        equ     MFP_BASE+($12<<1)
+MFP_UCR                         equ     MFP_BASE+($14<<1)
+MFP_RSR                         equ     MFP_BASE+($15<<1)
+MFP_TSR                         equ     MFP_BASE+($16<<1)
+MFP_UDR                         equ     MFP_BASE+($17<<1)
 
 MFP_VR_IN_SERVICE_EN            equ     $08
 MFP_TMR_DELAY_PRESCALE_4        equ     %001
@@ -36,6 +34,7 @@ MFP_TSR_ENABLE                  equ     (%1)
 MFP_IRQ_TIMER_C::               equ     $20
 MFP_IRQ_TIMER_C_MASK::          equ     ~MFP_IRQ_TIMER_C
 
+MFP_VECBASE                     equ     $40
 MFP_VEC_TIMER_C                 equ     ((MFP_VECBASE+$05)*4)   ; 5th vector, longword size
 
 MFPINIT::

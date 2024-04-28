@@ -6,6 +6,7 @@
 #include "time.h"
 #include "shellac.h"
 #include "serial.h"
+#include "spi.h"
 #include "xmodem.h"
 
 #define PARAM_SIZE 10
@@ -28,12 +29,14 @@ bool command_read(char *args[], int count);
 bool command_write(char *args[], int count);
 bool command_transfer(char *args[], int count);
 bool command_execute(char *args[], int count);
+bool command_spi(char *args[], int count);
 
 static Command commands[] = {
     {"rd", "rd <addr> (<length> = 1)", &command_read},
     {"wr", "wr <addr> <value1> (<value2>...<value8>)", &command_write},
     {"tx", "tx <addr>", &command_transfer},
-    {"ex", "ex <addr>", &command_execute}
+    {"ex", "ex <addr>", &command_execute},
+    {"spi", "sp <byte> (<cs>)", &command_spi}
 };
 
 char *command_read_input(char *buffer, int size) {
@@ -150,6 +153,34 @@ bool command_execute(char *args[], int count) {
     int (*function)(void) = (int (*)(void))strtoul(args[0], NULL, 16);
 
     return function();
+}
+
+bool command_spi(char *args[], int count) {
+    spi_init();
+
+    // get sd card into spi mode
+    for (int i = 0; i < 10; i++) {
+        spi_read();
+    }
+
+    spi_cs_assert();
+
+    spi_transfer(0x40);
+    spi_transfer(0x00);
+    spi_transfer(0x00);
+    spi_transfer(0x00);
+    spi_transfer(0x00);
+    spi_transfer(0x95);
+
+    int recv = 0xFF;
+    while ((recv = spi_read()) == 0xFF);
+
+    spi_cs_deassert();
+
+    serial_put_string("Recv:");
+    serial_put_hex(recv);
+
+    return true;
 }
 
 void shellac_main() {
