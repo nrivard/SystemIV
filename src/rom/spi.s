@@ -58,7 +58,7 @@ SPITX:
     or.b    #SPI_MOSI,D2      ; MSB is a `1`
 .SendBit:
     move.b  D2,SPI_PORT
-    rept 20
+    rept 2
     nop                         ; even out duty cycle
     endr
     bset    #(SPI_CLK_BIT),D2   ; flip clk bit back high
