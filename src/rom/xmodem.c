@@ -35,8 +35,7 @@ int xmodem_start_tx() {
 
         clock_t start = clock();
         while ((byte_avail = serial_byte_avail()) == 0) {
-            clock_t time = clock();
-            if ((time - start) > XMODEM_TIMEOUT) {
+            if ((clock() - start) > XMODEM_TIMEOUT) {
                 break;
             }
         }

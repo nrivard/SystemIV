@@ -6,7 +6,7 @@
 #include "time.h"
 #include "shellac.h"
 #include "serial.h"
-#include "spi.h"
+#include "sdcard.h"
 #include "xmodem.h"
 
 #define PARAM_SIZE 10
@@ -156,31 +156,14 @@ bool command_execute(char *args[], int count) {
 }
 
 bool command_spi(char *args[], int count) {
-    spi_init();
+    sdcard_device_t device;
+    sdcard_error_t error = sdcard_init(&device);
 
-    // get sd card into spi mode
-    for (int i = 0; i < 10; i++) {
-        spi_read();
-    }
+    serial_put_hex(error);
+    serial_put_string(", ");
+    serial_put_long((unsigned long)&device);
 
-    spi_cs_assert();
-
-    spi_transfer(0x40);
-    spi_transfer(0x00);
-    spi_transfer(0x00);
-    spi_transfer(0x00);
-    spi_transfer(0x00);
-    spi_transfer(0x95);
-
-    int recv = 0xFF;
-    while ((recv = spi_read()) == 0xFF);
-
-    spi_cs_deassert();
-
-    serial_put_string("Recv:");
-    serial_put_hex(recv);
-
-    return true;
+    return error != SDCARD_NOERR;
 }
 
 void shellac_main() {
