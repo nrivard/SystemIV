@@ -36,7 +36,7 @@ static Command commands[] = {
     {"wr", "wr <addr> <value1> (<value2>...<value8>)", &command_write},
     {"tx", "tx <addr>", &command_transfer},
     {"ex", "ex <addr>", &command_execute},
-    {"spi", "sp <byte> (<cs>)", &command_spi}
+    {"spi", "spi <byte> (<cs>)", &command_spi}
 };
 
 char *command_read_input(char *buffer, int size) {
@@ -163,7 +163,23 @@ bool command_spi(char *args[], int count) {
     serial_put_string(", ");
     serial_put_long((unsigned long)&device);
 
-    return error != SDCARD_NOERR;
+    if (error != SDCARD_NOERR) {
+        return error;
+    }
+
+    uint8_t block[512];
+    uint8_t token = 0;
+    error = sdcard_read_block(0, block, &token);
+    if (error != SDCARD_NOERR) {
+        return error;
+    }
+
+    serial_put_string("\r\n");
+    for (int i = 0; i < 512; i++) {
+        serial_put_hex(block[i]);
+    }
+
+    return true;
 }
 
 void shellac_main() {

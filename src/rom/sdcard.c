@@ -5,24 +5,35 @@
 #include "sdcard.h"
 #include "spi.h"
 
+void sdcard_send_command(const sdcard_command_t *const command, 
+                         sdcard_response_t *response);
+
+void sdcard_send_app_command(const sdcard_command_t *const command,
+                             sdcard_response_t *response);
+
 uint8_t sdcard_wait_response(void);
 void sdcard_receive_r7(sdcard_response_t *response);
 
+
 // com
-const sdcard_command_t CMD0 =  {0x40, {0x00, 0x00, 0x00, 0x00}, 0x95};
-const sdcard_command_t CMD8 =  {0x48, {0x00, 0x00, 0x01, 0xAA}, 0x87};
-const sdcard_command_t CMD16 = {0x50, {0x00, 0x00, 0x02, 0x00}, 0x00};  // configured for 512 byte block size
-const sdcard_command_t CMD55 = {0x77, {0x00, 0x00, 0x00, 0x00}, 0x00};
-const sdcard_command_t CMD58 = {0x7A, {0x00, 0x00, 0x00, 0x00}, 0x00};
+const sdcard_command_t CMD0 =  {0x40, 0x00000000, 0x95};
+const sdcard_command_t CMD8 =  {0x48, 0x000001AA, 0x87};
+const sdcard_command_t CMD16 = {0x50, 0x00000200, 0x00};  // configured for 512 byte block size
+const sdcard_command_t CMD55 = {0x77, 0x00000000, 0x00};
+const sdcard_command_t CMD58 = {0x7A, 0x00000000, 0x00};
 
 // app commands
-const sdcard_command_t CMD41 = {0x69, {0x40, 0x00, 0x00, 0x00}, 0x00};
+const sdcard_command_t CMD41 = {0x69, 0x40000000, 0x00};
 
 sdcard_error_t sdcard_init(sdcard_device_t *device) {
     device->status = SDCARD_STATUS_UNKNOWN;
     device->type = SDCARD_DEVICE_NONE;
 
     spi_init();
+
+    // toggle ENABLE to sync card timing up
+    spi_cs_assert();
+    spi_cs_deassert();
 
     // get sd card into spi mode with CS de-asserted
     for (int i = 0; i < 10; i++) {
@@ -64,13 +75,13 @@ sdcard_error_t sdcard_init(sdcard_device_t *device) {
         goto ERROR;
     }
 
-    for (int tries = 0x10; response.r1 == SDCARD_ERROR_IDLE && tries >= 0; --tries) {
+    for (int tries = 0x20; response.r1 == SDCARD_ERROR_IDLE && tries >= 0; --tries) {
         sdcard_send_app_command(&CMD41, &response);
         switch (response.r1) {
             case SDCARD_NOERR:
                 break;
             case SDCARD_ERROR_IDLE:
-                delay(10);
+                delay(5);
                 continue;
             default:
                 goto ERROR;
@@ -102,6 +113,40 @@ sdcard_error_t sdcard_init(sdcard_device_t *device) {
 ERROR:
     device->status = SDCARD_STATUS_FAILED;
     device->type = SDCARD_DEVICE_NONE;
+
+DONE:
+    spi_cs_deassert();
+    return response.r1;
+}
+
+sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], uint8_t *token) {
+    *token = SDCARD_DATA_TOKEN_NONE;
+
+    sdcard_command_t read;
+    read.index = 0x51;
+    read.arg = block;
+    read.crc = 0x00;
+
+    spi_cs_assert();
+
+    sdcard_response_t response;
+    sdcard_send_app_command(&read, &response);   
+    if (response.r1 != 0) {
+        goto DONE;
+    } 
+
+    *token = sdcard_wait_response();
+    if (*token != SDCARD_DATA_TOKEN_BLOCK) {
+        goto DONE;
+    }
+
+    for (int i = 0; i < 512; i++) {
+        *buffer++ = spi_read();
+    }
+
+    // "read" 16 bit CRC
+    spi_read();
+    spi_read();
 
 DONE:
     spi_cs_deassert();

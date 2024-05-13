@@ -28,9 +28,20 @@ typedef enum {
     SDCARD_DEVICE_V2_XC     // high/extended capacity v2 SD card
 } sdcard_device_type;
 
+typedef enum {
+    SDCARD_DATA_TOKEN_NONE  = 0xFF,
+    SDCARD_DATA_TOKEN_BLOCK = 0xFE,
+    SDCARD_DATA_TOKEN_MULTI = 0xFC,
+    SDCARD_DATA_TOKEN_STOP  = 0xFD,
+    SDCARD_DATA_TOKEN_ERR   = (1<<0),
+    SDCARD_DATA_TOKEN_CC_ERR = (1<<1),
+    SDCARD_DATA_TOKEN_ECC_FAIL = (1<<2),
+    SDCARD_DATA_TOKEN_RANGE_ERR = (1<<3)
+} sdcard_data_token_t;
+
 typedef struct {
     uint8_t index;
-    uint8_t args[4];
+    uint32_t arg;
     uint8_t crc;
 } __attribute__((packed)) sdcard_command_t;
 
@@ -52,8 +63,4 @@ typedef struct {
 
 sdcard_error_t sdcard_init(sdcard_device_t *device);
 
-void sdcard_send_command(const sdcard_command_t *const command, 
-                         sdcard_response_t *response);
-
-void sdcard_send_app_command(const sdcard_command_t *const command,
-                             sdcard_response_t *response);
+sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], uint8_t *token);
