@@ -137,6 +137,7 @@ sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], uint8_t *t
 
     *token = sdcard_wait_response();
     if (*token != SDCARD_DATA_TOKEN_BLOCK) {
+        response.r1 |= SDCARD_ERROR_FOUND;
         goto DONE;
     }
 

@@ -18,7 +18,8 @@ typedef enum {
     SDCARD_ERROR_CRC =          (1<<3),
     SDCARD_ERROR_SEQ =          (1<<4),
     SDCARD_ERROR_ADDR =         (1<<5),
-    SDCARD_ERROR_PARAM =        (1<<6)
+    SDCARD_ERROR_PARAM =        (1<<6),
+    SDCARD_ERROR_FOUND =        (1<<7),
 } sdcard_error_t;
 
 typedef enum {
@@ -63,4 +64,9 @@ typedef struct {
 
 sdcard_error_t sdcard_init(sdcard_device_t *device);
 
+/// @brief 
+/// @param block 
+/// @param buffer 
+/// @param token 
+/// @return error code. will contain `SDCARD_ERROR_FOUND` if error was found. read `token` for possible error reason
 sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], uint8_t *token);

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fat.h"
 #include "time.h"
 #include "shellac.h"
 #include "serial.h"
