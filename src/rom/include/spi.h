@@ -5,7 +5,7 @@
 
 #define SPI_CS  (1<<5)
 
-extern uint8_t MFP_GPIP, MFP_DDR;
+extern volatile uint8_t MFP_GPIP, MFP_DDR;
 
 #define spi_port    (&MFP_GPIP)
 #define spi_ddr     (&MFP_DDR)
@@ -21,27 +21,19 @@ static inline int spi_read(void) {
 }
 
 static inline void spi_cs_assert(void) {
-    *spi_port &= ~SPI_CS;
-    // __asm__ __volatile__ (
-    // "   andi.b #%[mask],%[port]     \n"
-    // :   [port]  "m" ((uint8_t *)&MFP_GPIP)
-    // :   [mask]  "n" (SPI_CS)
-    // :   // clobbers none
-    // );
-    // __asm__ __volatile__ (
-    // "   and.b   #%[mask],%[spi]      \n"
-    // : // no outputs
-    // :   [mask] "n" (~SPI_CS),
-    //     [spi] "=m" (MFP_GPIP)
-    // : // clobbers (none)
-    //     memory
-    // );
+    // *spi_port &= ~SPI_CS;
+    __asm__ __volatile__ (
+    "   andi.b  %[mask],%[spi]      \n"
+    :   [spi] "=m" (MFP_GPIP)
+    :   [mask] "n" (~SPI_CS)
+    : // clobbers (none)
+    );
 }
 
 static inline void spi_cs_deassert(void) {
     *spi_port |= SPI_CS;
     // __asm__ __volatile__ (
-    // "   or.b    #%[mask],%[spi]      \n"
+    // "   ori.b    %[mask],%[spi]      \n"
     // : // no outputs
     // :   [mask] "n" (SPI_CS),
     //     [spi] "=m" (MFP_GPIP)

@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+#define swap_endian32(num)  __builtin_bswap32(num)
+// #define swap_endian32(num)  (((num & 0xFF) << 24) + ((num & 0xFF00) << 8) + ((num & 0xFF0000) >> 8) + ((num & 0xFF000000) >> 24))
+
 typedef enum {
     FAT_NOERR = 0,
     FAT_ERROR_SDCARD,   // no sdcard found
@@ -10,9 +13,7 @@ typedef enum {
 
 typedef struct {
     uint8_t bootFlag;
-    uint8_t chsBegin[3];
     uint8_t type;
-    uint8_t chsEnd[3];
     uint32_t lba;
     uint32_t sectorCount;
 } __attribute__((packed)) fat_partition_t;
