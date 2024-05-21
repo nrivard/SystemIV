@@ -7,7 +7,6 @@
 #include "time.h"
 #include "shellac.h"
 #include "serial.h"
-#include "sdcard.h"
 #include "xmodem.h"
 
 #define PARAM_SIZE 10
@@ -157,28 +156,13 @@ bool command_execute(char *args[], int count) {
 }
 
 bool command_spi(char *args[], int count) {
-    sdcard_device_t device;
-    sdcard_error_t error = sdcard_init(&device);
-
-    serial_put_hex(error);
-    serial_put_string(", ");
-    serial_put_long((unsigned long)&device);
-
-    if (error != SDCARD_NOERR) {
-        return error;
+    fat_disk_t disk;
+    if (fat_init(&disk) != FAT_NOERR) {
+        return false;
     }
 
-    uint8_t block[512];
-    uint8_t token = 0;
-    error = sdcard_read_block(0, block, &token);
-    if (error != SDCARD_NOERR) {
-        return error;
-    }
-
-    serial_put_string("\r\n");
-    for (int i = 0; i < 512; i++) {
-        serial_put_hex(block[i]);
-    }
+    serial_put_string("Found volume at sector ");
+    serial_put_long(disk.volumes[0].lba);
 
     return true;
 }

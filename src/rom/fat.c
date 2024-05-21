@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 
 #include "fat.h"
 #include "sdcard.h"
@@ -38,7 +39,9 @@ typedef struct {
     uint32_t sectorCount;
 } __attribute__((packed)) fat_mbr_partition_t;
 
-fat_error_t fat_init(fat_volume_t *volume) {
+fat_error_t fat_init(fat_disk_t *disk) {
+    memset(disk, 0, sizeof(fat_volume_t));
+
     sdcard_device_t device;
     if (sdcard_init(&device) != SDCARD_NOERR || device.status != SDCARD_STATUS_READY) {
         return FAT_ERROR_SDCARD;
@@ -52,25 +55,40 @@ fat_error_t fat_init(fat_volume_t *volume) {
     }
 
     if (block[0x1FE] != FAT_SECTOR_SIGNATURE_1 || block[0x1FF] != FAT_SECTOR_SIGNATURE_2) {
-        return FAT_NOT_FAT;
+        return FAT_BAD_SECTOR;
     }
 
+    // cache partition data
+    fat_mbr_partition_t mbrparts[4];
+    memcpy(mbrparts, &block[FAT_PARTITION_OFFSET], 4 * sizeof(fat_mbr_partition_t));
+
     // copy partition information that we care about
-    fat_mbr_partition_t *mbrparts = (fat_mbr_partition_t *)&block[FAT_PARTITION_OFFSET];
     for (int i = 0; i < 4; i++) {
         fat_mbr_partition_t *from = &mbrparts[i];
+        fat_volume_t *to = &disk->volumes[i];
         
-        // for now only support FAT16
-        if (from->type != FAT_MBR_PARTITION_FAT16) {
+        switch (from->type) {
+            case FAT_MBR_PARTITION_FAT16:
+                to->type = FAT_16;
+                break;
+
+            case FAT_MBR_PARTITION_FAT32:
+            case FAT_MBR_PARTITION_FAT32_LBA:
+                to->type = FAT_32;
+                break;
+
+            default:
+                to->type = FAT_NOT_FAT;
+        }
+
+        if (to->type == FAT_NOT_FAT) {
             continue;
         }
 
-        fat_partition_t *to = &volume->partitions[i];
+        to->lba = swap_endian32(from->lba);
 
-        to->bootFlag = from->bootFlag;
-        to->type = from->type;
-        to->lba = from->lba;
-        to->sectorCount = swap_endian32(from->sectorCount);
+        // read volume ID sector
+        sdcard_read_block(to->lba, block, &token);
     }
 
     return FAT_NOERR;

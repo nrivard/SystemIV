@@ -8,18 +8,23 @@
 typedef enum {
     FAT_NOERR = 0,
     FAT_ERROR_SDCARD,   // no sdcard found
-    FAT_NOT_FAT,        // not a valid FAT filesystem
+    FAT_BAD_SECTOR,
 } fat_error_t;
 
-typedef struct {
-    uint8_t bootFlag;
-    uint8_t type;
-    uint32_t lba;
-    uint32_t sectorCount;
-} __attribute__((packed)) fat_partition_t;
+typedef enum {
+    FAT_NOT_FAT = 0,
+    FAT_16,
+    FAT_32
+} fat_type_t;
 
 typedef struct {
-    fat_partition_t partitions[4];
-} fat_volume_t;
+    uint32_t    lba;
+    fat_type_t  type;
+    uint8_t     sectorsPerCluster;
+} __attribute__((packed)) fat_volume_t;
 
-fat_error_t fat_init(fat_volume_t *volume);
+typedef struct {
+    fat_volume_t volumes[4];
+} fat_disk_t;
+
+fat_error_t fat_init(fat_disk_t *disk);

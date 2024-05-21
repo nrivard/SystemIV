@@ -4,7 +4,7 @@ LD=m68k-elf-ld
 OBJCOPY=m68k-elf-objcopy
 
 ASFLAGS=-Felf
-CFLAGS=-I ./src -march=68000 -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -Wall
+CFLAGS=-I ./src -march=68000 -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-threadsafe-statics -fno-exceptions -Wall -O2
 
 ASM_FILES=$(shell find ./src -name "*.s")
 ASM_OBJECTS=$(patsubst ./src/%, ./obj/%,$(patsubst %.s, %.os, $(ASM_FILES)))
