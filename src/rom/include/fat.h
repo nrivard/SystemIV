@@ -18,7 +18,9 @@ typedef enum {
 } fat_type_t;
 
 typedef struct {
-    uint32_t    lba;
+    uint32_t    lba;            // TODO: do we need this?
+    uint32_t    fatSector;      // sector of first FAT
+    uint32_t    rootCluster;    // sector of root dir
     fat_type_t  type;
     uint8_t     sectorsPerCluster;
 } __attribute__((packed)) fat_volume_t;

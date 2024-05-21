@@ -12,6 +12,8 @@
 #define FAT_MBR_PARTITION_FAT32_LBA 0X0C
 #define FAT_MBR_PARTITION_FAT16     0x0E
 
+#define FAT_VALID_SECTOR(block)     (block[0x1FE] == FAT_SECTOR_SIGNATURE_1 && block[0x1FF] == FAT_SECTOR_SIGNATURE_2)
+
 // NOTE! All multi-byte numbers for on-disk records are LITTLE ENDIAN
 
 typedef struct {
@@ -39,6 +41,9 @@ typedef struct {
     uint32_t sectorCount;
 } __attribute__((packed)) fat_mbr_partition_t;
 
+// fetches volume ID sector and completes initialization for fat32 volume
+fat_error_t fat_init_32(fat_volume_t *volume);
+
 fat_error_t fat_init(fat_disk_t *disk) {
     memset(disk, 0, sizeof(fat_volume_t));
 
@@ -54,7 +59,7 @@ fat_error_t fat_init(fat_disk_t *disk) {
         return FAT_ERROR_SDCARD;
     }
 
-    if (block[0x1FE] != FAT_SECTOR_SIGNATURE_1 || block[0x1FF] != FAT_SECTOR_SIGNATURE_2) {
+    if (!FAT_VALID_SECTOR(block)) {
         return FAT_BAD_SECTOR;
     }
 
@@ -66,6 +71,9 @@ fat_error_t fat_init(fat_disk_t *disk) {
     for (int i = 0; i < 4; i++) {
         fat_mbr_partition_t *from = &mbrparts[i];
         fat_volume_t *to = &disk->volumes[i];
+
+        // prefill out lba even if it's invalid
+        to->lba = swap_endian32(from->lba);
         
         switch (from->type) {
             case FAT_MBR_PARTITION_FAT16:
@@ -75,21 +83,31 @@ fat_error_t fat_init(fat_disk_t *disk) {
             case FAT_MBR_PARTITION_FAT32:
             case FAT_MBR_PARTITION_FAT32_LBA:
                 to->type = FAT_32;
+
+                // TODO: do we need to check if errors here?
+                fat_init_32(to);
                 break;
 
             default:
                 to->type = FAT_NOT_FAT;
         }
-
-        if (to->type == FAT_NOT_FAT) {
-            continue;
-        }
-
-        to->lba = swap_endian32(from->lba);
-
-        // read volume ID sector
-        sdcard_read_block(to->lba, block, &token);
     }
+
+    return FAT_NOERR;
+}
+
+fat_error_t fat_init_32(fat_volume_t *volume) {
+    if (!volume->lba) {
+        return FAT_NOT_FAT;
+    }
+
+    uint8_t block[512];
+    uint8_t token;
+    if (sdcard_read_block(volume->lba, block, &token) != SDCARD_NOERR) {
+        return FAT_ERROR_SDCARD;
+    }
+
+    
 
     return FAT_NOERR;
 }
