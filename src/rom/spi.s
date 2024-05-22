@@ -51,7 +51,7 @@ SPITX:
 .BitLoop:
     move.b  SPI_PORT,D2         ; SPI port values
     ori.b   #(SPI_MOSI),D2      ; MOSI high (many SD ops are $FF!)
-    asl.b   #1,D1               ; shift MSB into carry
+    add.b   D1,D1               ; shift MSB into carry (saves 4 cycles over rotating)
     bcs     .SendBit
     andi.b  #(SPI_MOSI_MSK),D2  ; MSB is a `0`
 .SendBit:
@@ -59,7 +59,7 @@ SPITX:
     ori.b   #(SPI_CLK),SPI_PORT ; flip clock high directly on the port
 .ReadBit:
     move.b  SPI_PORT,D2         ; read port back into D2
-    roxl.b  #(8-SPI_MISO_BIT),D2 ; rotate MISO into extend bit
+    add.b   D2,D2               ; shift MISO into extend bit (saves 4 cycles over rotating)
     roxl.b  #1,D0               ; rotate extend bit into return value
 .ToggleClock:
     eori.b  #(SPI_CLK),SPI_PORT ; flip clock low directly on the port
