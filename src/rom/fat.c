@@ -39,15 +39,27 @@ typedef struct {
     uint16_t reservedSectors;
     uint8_t fats;
     uint16_t rootEntries;   // always zero for FAT32
-    uint16_t smallSectors;  // always zero for FAT32
+    uint16_t sectors16;     // always zero for FAT32
     uint8_t mediaDescriptor;
-    uint16_t sectorsPerFat16; // always zero for FAT32
+    uint16_t fatSize16;       // only valid for FAT16!
+    uint16_t sectorsPerTrack;
+    uint16_t heads;
+    uint32_t hiddenSectors;
+    uint32_t sectors32;
 
+    union {
+        struct {
+            uint32_t fatSize32;
+            uint16_t flags;
+            uint8_t version[2]; // major and minor filesystem version
+            uint32_t rootCluster;
+            // ignoring remaining fields
+        } fat32;
+    };
 } __attribute((packed)) fat_volume_id_t;
 
 typedef struct {
-    char filename[8];
-    char extension[3];
+    char filename[11];
     uint8_t attributes;
     uint8_t RESERVED;
     uint8_t creationCentisec;
@@ -64,6 +76,10 @@ typedef struct {
 // fetches volume ID sector and completes initialization for fat32 volume
 fat_error_t fat_init_32(fat_volume_t *volume, uint32_t lba);
 
+static inline uint32_t fat_sector(fat_volume_t *volume, uint32_t cluster) {
+    return volume->dataSector + ((cluster - 2) * volume->sectorsPerCluster);
+}
+
 fat_error_t fat_init(fat_disk_t *disk) {
     memset(disk, 0, sizeof(fat_volume_t));
 
@@ -73,7 +89,7 @@ fat_error_t fat_init(fat_disk_t *disk) {
     }
 
     // fetch MBR
-    uint8_t block[512];
+    uint8_t block[FAT_SECTOR_SIZE];
     uint8_t token;
     if (sdcard_read_block(0, block, &token) != SDCARD_NOERR) {
         return FAT_ERROR_SDCARD;
@@ -83,57 +99,65 @@ fat_error_t fat_init(fat_disk_t *disk) {
         return FAT_ERROR_BAD_SECTOR;
     }
 
+    // copy the partitions so we can re-use the block buffer
     fat_mbr_t *mbr = (fat_mbr_t *)block;
+    fat_mbr_partition_t partitions[4];
+    memcpy(partitions, mbr->partitions, sizeof(fat_mbr_partition_t) * 4);
 
-    // copy partition information that we care about
+    // initialize each volume
     for (int i = 0; i < 4; i++) {
-        fat_mbr_partition_t *from = &mbr->partitions[i];
-        fat_volume_t *to = &disk->volumes[i];
+        fat_mbr_partition_t *from = &partitions[i];
+        fat_volume_t *to = &(disk->volumes[i]);
 
-        // prefill out lba even if it's invalid
-        uint32_t lba = swap_endian32(from->lba);
-        
-        switch (from->type) {
-            case FAT_MBR_PARTITION_FAT16:
-                to->type = FAT_16;
-                break;
+        // is this a FAT partition?
+        uint8_t type = from->type;
+        if (type != FAT_MBR_PARTITION_FAT16 && type != FAT_MBR_PARTITION_FAT32 && type != FAT_MBR_PARTITION_FAT32_LBA) {
+            continue;
+        }
 
-            case FAT_MBR_PARTITION_FAT32:
-            case FAT_MBR_PARTITION_FAT32_LBA:
-                fat_error_t error = fat_init_32(to, lba);
-                to->type = error == FAT_NOERR ? FAT_32 : FAT_NOT_FAT;
-                break;
+        // fetch volume ID
+        to->volumeSector = swap_endian32(from->lba);
 
-            default:
-                to->type = FAT_NOT_FAT;
+        if (sdcard_read_block(to->volumeSector, block, &token) != SDCARD_NOERR) {
+            continue;
+        }
+
+        if (!FAT_VALID_SECTOR(block)) {
+            continue;
+        }
+
+        fat_volume_id_t *volumeID = (fat_volume_id_t *)block;
+
+        if (swap_endian16(volumeID->sectorSize) != FAT_SECTOR_SIZE) {
+            continue;
+        }
+
+        if (volumeID->fats != 2) {
+            continue;
+        }
+
+        uint16_t reserved = swap_endian16(volumeID->reservedSectors);
+        uint32_t rootDirSectors = ((swap_endian16(volumeID->rootEntries) * sizeof(fat_record_t)) + (FAT_SECTOR_SIZE - 1)) / FAT_SECTOR_SIZE;
+        uint32_t fatSize = swap_endian32((uint32_t)volumeID->fatSize16 ?: volumeID->fat32.fatSize32);
+        uint32_t dataSector = reserved + (fatSize << 1) + rootDirSectors;
+
+        to->sectorsPerCluster = volumeID->sectorsPerCluster;
+        to->fatSector = to->volumeSector + reserved;
+        to->dataSector = to->volumeSector + reserved + dataSector;
+        to->rootCluster = swap_endian32(volumeID->fat32.rootCluster);
+
+        // now calculate what FS this is
+        uint32_t sectors = swap_endian32((uint32_t)volumeID->sectors16 ?: volumeID->sectors32);
+        uint32_t clusterCount = (sectors - dataSector) / volumeID->sectorsPerCluster;
+
+        if (clusterCount < 4085) {
+            // FAT12 which we don't support!
+        } else if (clusterCount < 65525) {
+            to->type = FS_FAT16;
+        } else {
+            to->type = FS_FAT32;
         }
     }
-
-    return FAT_NOERR;
-}
-
-fat_error_t fat_init_32(fat_volume_t *volume, uint32_t lba) {
-    uint8_t block[512];
-    uint8_t token;
-    if (sdcard_read_block(lba, block, &token) != SDCARD_NOERR) {
-        return FAT_ERROR_SDCARD;
-    }
-
-    if (!FAT_VALID_SECTOR(block)) {
-        return FAT_ERROR_BAD_SECTOR;
-    }
-
-    uint16_t *rawSectorSize = (uint16_t *)&block[0x0B];
-    uint16_t sectorSize = swap_endian16(*rawSectorSize);
-    if (sectorSize != 512) {
-        return FAT_ERROR_SECTOR_SIZE;
-    }
-
-    if (block[0x10] != 2) {
-        return FAT_ERROR_NUM_FATS;
-    }
-
-    
 
     return FAT_NOERR;
 }

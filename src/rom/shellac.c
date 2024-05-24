@@ -161,8 +161,24 @@ bool command_spi(char *args[], int count) {
         return false;
     }
 
-    serial_put_string("Found volume at sector ");
-    serial_put_long(disk.volumes[0].lba);
+    fat_volume_t *volume = &disk.volumes[0];
+
+    if (volume->type == FS_UNKNOWN) {
+        serial_put_string("Unknown FS!");
+        return false;
+    }
+
+    serial_put_string("Found ");
+    serial_put_string(volume->type == FS_FAT16 ? "FAT16" : "FAT32");
+
+    serial_put_string(" volume at sector ");
+    serial_put_long(volume->volumeSector);
+
+    serial_put_string("\r\nFAT  : ");
+    serial_put_long(volume->fatSector);
+
+    serial_put_string("\r\nData : ");
+    serial_put_long(volume->dataSector);
 
     return true;
 }
