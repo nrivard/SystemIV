@@ -46,6 +46,7 @@ START::
 .InitSystem:
     bsr.w   SYSINIT
     jsr     MFPINIT
+    jsr     SPIINIT
 .InterruptTest:
     lea.l   HandleTick,A0               ; copy HandleTick to timer c vector
     lea.l   MFP_VEC_TIMER_C,A1

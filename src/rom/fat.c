@@ -28,7 +28,7 @@
 const char *fatz = "fats";
 
 #define FAT_GET_16(buffer, offset)  (((uint16_t)buffer[offset + 1] << 8) | ((uint16_t)buffer[offset]))
-#define FAT_GET_32(buffer, offset)  (((uint32_t)buffer[offset + 3] << 24) | ((uint32_t)buffer[offset + 2] << 16) | ((uint32_t)buffer[offset + 1]) | ((uint32_t)buffer[offset]))
+#define FAT_GET_32(buffer, offset)  (((uint32_t)buffer[offset + 3] << 24) | ((uint32_t)buffer[offset + 2] << 16) | ((uint32_t)buffer[offset + 1] << 8) | ((uint32_t)buffer[offset]))
 
 #define FAT_VALID_SECTOR(block)     (block[0x1FE] == FAT_SECTOR_SIGNATURE_1 && block[0x1FF] == FAT_SECTOR_SIGNATURE_2)
 
@@ -60,38 +60,13 @@ typedef struct {
 } __attribute__((packed)) fat_mbr_partition_t;
 
 // you are not supposed to allocate this struct, but rather cast your MBR block as a pointer :)
+// NOTE: FAT volume ID is not structured this way bc it has many word or long values at odd addresses!
+// this is a nightmare to try and work out
 typedef struct {
     uint8_t bootCode[446];
     fat_mbr_partition_t partitions[4];
     uint16_t signature;
 } __attribute__((packed)) fat_mbr_t;
-
-typedef struct {
-    uint8_t bootstrap[3];
-    char systemID[8];
-    uint16_t sectorSize;
-    uint8_t sectorsPerCluster;
-    uint16_t reservedSectors;
-    uint8_t fats;
-    uint16_t rootEntries;   // always zero for FAT32
-    uint16_t sectors16;     // always zero for FAT32
-    uint8_t mediaDescriptor;
-    uint16_t fatSize16;       // only valid for FAT16!
-    uint16_t sectorsPerTrack;
-    uint16_t heads;
-    uint32_t hiddenSectors;
-    uint32_t sectors32;
-
-    union {
-        struct {
-            uint32_t fatSize32;
-            uint16_t flags;
-            uint8_t version[2]; // major and minor filesystem version
-            uint32_t rootCluster;
-            // ignoring remaining fields
-        } fat32;
-    };
-} __attribute((packed)) fat_volume_id_t;
 
 typedef struct {
     char filename[11];

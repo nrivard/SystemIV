@@ -29,8 +29,6 @@ sdcard_error_t sdcard_init(sdcard_device_t *device) {
     device->status = SDCARD_STATUS_UNKNOWN;
     device->type = SDCARD_DEVICE_NONE;
 
-    spi_init();
-
     // toggle ENABLE to sync card timing up
     spi_cs_assert();
     spi_cs_deassert();
