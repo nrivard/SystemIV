@@ -23,13 +23,13 @@ typedef enum {
 } fs_type_t;
 
 typedef struct {
-    fs_type_t  type;
+    fs_type_t   type;
     uint8_t     sectorsPerCluster; // TODO: this is always a power of 2 so easy optimization is compute number of shifts required rather than raw multiplication!
     uint32_t    volumeSector;   // first sector of partition
     uint32_t    fatSector;      // sector of first FAT
     uint32_t    dataSector;  // sector of the first cluster
     uint32_t    rootCluster;    // cluster of root dir
-} __attribute__((packed)) fat_volume_t;
+} fat_volume_t;
 
 typedef struct {
     fat_volume_t volumes[4];

@@ -1,8 +1,11 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "fat.h"
 #include "sdcard.h"
+
+#include "serial.h"
 
 #define FAT_SECTOR_SIGNATURE_1      0x55
 #define FAT_SECTOR_SIGNATURE_2      0xAA
@@ -11,7 +14,39 @@
 #define FAT_MBR_PARTITION_FAT32_LBA 0X0C
 #define FAT_MBR_PARTITION_FAT16     0x0E
 
+#define FAT_VOLUME_ID_SECTOR_SZ     0x0B
+#define FAT_VOLUME_ID_SEC_PER_CLSTR 0x0D
+#define FAT_VOLUME_ID_RES_SECTORS   0x0E
+#define FAT_VOLUME_ID_FATS          0x10
+#define FAT_VOLUME_ID_ROOT_ENTRIES  0x11
+#define FAT_VOLUME_ID_SECTORS_16    0x13
+#define FAT_VOLUME_ID_FAT_SZ_16     0x16
+#define FAT_VOLUME_ID_SECTORS_32    0x20
+#define FAT_VOLUME_ID_FAT_SZ_32     0x24
+#define FAT_VOLUME_ID_ROOT_CLSTR    0x2C
+
+const char *fatz = "fats";
+
+#define FAT_GET_16(buffer, offset)  (((uint16_t)buffer[offset + 1] << 8) | ((uint16_t)buffer[offset]))
+#define FAT_GET_32(buffer, offset)  (((uint32_t)buffer[offset + 3] << 24) | ((uint32_t)buffer[offset + 2] << 16) | ((uint32_t)buffer[offset + 1]) | ((uint32_t)buffer[offset]))
+
 #define FAT_VALID_SECTOR(block)     (block[0x1FE] == FAT_SECTOR_SIGNATURE_1 && block[0x1FF] == FAT_SECTOR_SIGNATURE_2)
+
+#define DEBUG_BYTE(byte)            serial_put_hex(byte); \
+                                    serial_put(' ');
+
+#define DEBUG_LONG(val)             serial_put_long(val); \
+                                    serial_put(' ');
+                                
+#define DEBUG_KEY_BYTE(key, byte)  serial_put_string(key); \
+                                   serial_put_string(": "); \
+                                   serial_put_hex(byte); \
+                                   serial_put_string("\r\n");
+
+#define DEBUG_KEY_LONG(key, lng)  serial_put_string(key); \
+                                   serial_put_string(": "); \
+                                   serial_put_long(lng); \
+                                   serial_put_string("\r\n");
 
 // NOTE! All multi-byte numbers for on-disk records are LITTLE ENDIAN
 
@@ -73,9 +108,6 @@ typedef struct {
     uint32_t size;
 } __attribute__((packed)) fat_record_t;
 
-// fetches volume ID sector and completes initialization for fat32 volume
-fat_error_t fat_init_32(fat_volume_t *volume, uint32_t lba);
-
 static inline uint32_t fat_sector(fat_volume_t *volume, uint32_t cluster) {
     return volume->dataSector + ((cluster - 2) * volume->sectorsPerCluster);
 }
@@ -106,8 +138,8 @@ fat_error_t fat_init(fat_disk_t *disk) {
 
     // initialize each volume
     for (int i = 0; i < 4; i++) {
-        fat_mbr_partition_t *from = &partitions[i];
-        fat_volume_t *to = &(disk->volumes[i]);
+        fat_mbr_partition_t *from = partitions + i;
+        fat_volume_t *to = disk->volumes + i;
 
         // is this a FAT partition?
         uint8_t type = from->type;
@@ -126,29 +158,27 @@ fat_error_t fat_init(fat_disk_t *disk) {
             continue;
         }
 
-        fat_volume_id_t *volumeID = (fat_volume_id_t *)block;
-
-        if (swap_endian16(volumeID->sectorSize) != FAT_SECTOR_SIZE) {
+        if (FAT_GET_16(block, FAT_VOLUME_ID_SECTOR_SZ) != FAT_SECTOR_SIZE) {
             continue;
         }
 
-        if (volumeID->fats != 2) {
+        if (block[FAT_VOLUME_ID_FATS] != 2) {
             continue;
         }
 
-        uint16_t reserved = swap_endian16(volumeID->reservedSectors);
-        uint32_t rootDirSectors = ((swap_endian16(volumeID->rootEntries) * sizeof(fat_record_t)) + (FAT_SECTOR_SIZE - 1)) / FAT_SECTOR_SIZE;
-        uint32_t fatSize = swap_endian32((uint32_t)volumeID->fatSize16 ?: volumeID->fat32.fatSize32);
+        uint16_t reserved = FAT_GET_16(block, FAT_VOLUME_ID_RES_SECTORS);
+        uint32_t rootDirSectors = ((FAT_GET_16(block, FAT_VOLUME_ID_ROOT_ENTRIES) * sizeof(fat_record_t)) + (FAT_SECTOR_SIZE - 1)) / FAT_SECTOR_SIZE;
+        uint32_t fatSize = (uint32_t)FAT_GET_16(block, FAT_VOLUME_ID_FAT_SZ_16) ?: FAT_GET_32(block, FAT_VOLUME_ID_FAT_SZ_32);
         uint32_t dataSector = reserved + (fatSize << 1) + rootDirSectors;
 
-        to->sectorsPerCluster = volumeID->sectorsPerCluster;
+        to->sectorsPerCluster = block[FAT_VOLUME_ID_SEC_PER_CLSTR];
         to->fatSector = to->volumeSector + reserved;
-        to->dataSector = to->volumeSector + reserved + dataSector;
-        to->rootCluster = swap_endian32(volumeID->fat32.rootCluster);
+        to->dataSector = to->volumeSector + dataSector;
+        to->rootCluster = FAT_GET_32(block, FAT_VOLUME_ID_ROOT_CLSTR);
 
         // now calculate what FS this is
-        uint32_t sectors = swap_endian32((uint32_t)volumeID->sectors16 ?: volumeID->sectors32);
-        uint32_t clusterCount = (sectors - dataSector) / volumeID->sectorsPerCluster;
+        uint32_t sectors = (uint32_t)FAT_GET_16(block, FAT_VOLUME_ID_SECTORS_16) ?: FAT_GET_32(block, FAT_VOLUME_ID_SECTORS_32);
+        uint32_t clusterCount = (sectors - dataSector) / to->sectorsPerCluster;
 
         if (clusterCount < 4085) {
             // FAT12 which we don't support!

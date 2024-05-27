@@ -161,6 +161,12 @@ bool command_spi(char *args[], int count) {
         return false;
     }
 
+    char *debug = (char *)&disk;
+    for (int i = 0; i < sizeof(fat_disk_t); i++) {
+        serial_put_hex(debug[i]);
+        serial_put(' ');
+    }
+
     fat_volume_t *volume = &disk.volumes[0];
 
     if (volume->type == FS_UNKNOWN) {
