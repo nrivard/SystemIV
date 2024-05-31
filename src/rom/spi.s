@@ -32,18 +32,17 @@ SPIINIT::
     move.b  D0,SPI_PORT
     rts
 
-; C interface to transfer the passed in byte and return received byte
-spi_transfer::
-    move.l  4(SP),D0
-    ; fallthrough
-
+; C and TRAP interface to transfer the passed in byte and return received byte
+;
 ; params:
 ;   D0: the byte to send to the device
 ; returns:
 ;   D0: the received byte
 ; destroys:
 ;   D0,D1
-SPITX:
+spi_transfer::
+SPITX::
+    move.l  4(SP),D0
     movem.l D2-D3,-(SP)
     move.l  D0,D1               ; D1 holds value to send
     clr.l   D0                  ; D0 holds return value
@@ -67,4 +66,12 @@ SPITX:
 .Done:
     or.b    #(SPI_MOSI),SPI_PORT ; MOSI high (CLK should already be low)
     movem.l (SP)+,D2-D3
+    rts
+
+SPIASSERT::
+    andi.b  #SPI_CS,SPI_PORT
+    rts
+
+SPIDEASSERT::
+    ori.b   #SPI_CS,SPI_PORT
     rts
