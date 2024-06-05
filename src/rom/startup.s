@@ -23,7 +23,7 @@ Vectors::
     dcb.l   7,HandleGenericInterrupt    ; $19-1F: autovectors
     
     dcb.l   13,HandleGenericInterrupt   ; $20-2C: unused Trap handlers
-    dc.l    HandleGenericInterrupt      ; $2D: trap#13
+    dc.l    HANDLETRAP13                ; $2D: trap#13
     dc.l    HandleTrap14                ; $2E: trap#14
     dc.l    HandleGenericInterrupt      ; $2F: trap#15
 
