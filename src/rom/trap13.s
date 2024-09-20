@@ -1,20 +1,23 @@
     section .text
 
-; D0 contains function code
-; D0/A0 are "destroyed" (could contain return values)
+; D1 contains function code
 HANDLETRAP13::
-    cmp.l   #(.FunctionTableEnd-.FunctionTable)/4,D0
+    move.l  D1,-(SP)                    ; order matters here because calls below will pull
+    move.l  A1,-(SP)                    ; from the stack when A1/D1 was originally used!
+    cmp.l   #(.FunctionTableEnd-.FunctionTable)/4,D1
     bge     .Done
 .Found:
-    add.l   D0,D0
-    add.l   D0,D0                       ; adding twice is faster than shifting or mul
-    move.l  .FunctionTable(PC,D0),A0    ; get offset into function table
-    jsr     (A0)
+    add.l   D1,D1
+    add.l   D1,D1                       ; adding twice is faster than shifting or mul
+    move.l  .FunctionTable(PC,D0),A1    ; get offset into function table
+    jsr     (A1)
 .Done:
+    move.l  (SP)+,A1
+    move.l  (SP)+,D1
     rte
 
 .FunctionTable:
-    dc.l    SDCARDINIT                  ; call into direct
+    dc.l    .SDCARD_INIT
     dc.l    .SDCARD_RD_BLK
     dc.l    SPIINIT                     ; call into direct (should be removed!)
     dc.l    SPIASSERT                   ; call into direct (should be removed!)
@@ -22,13 +25,25 @@ HANDLETRAP13::
     dc.l    .SPI_TX                     ; should be removed!
 .FunctionTableEnd:
 
-; D1 should contain the byte to transfer
-; on return, D0 will contain the return value
+; D0: byte to transfer
 .SPI_TX:
-    move.l  D1,D0
     jsr     SPITX
     rts
 
-; D1 should contain the block number to read
+; A0: pointer to `sdcard_device_t` sized region
+.SDCARD_INIT:
+    move.l  A0,-(SP)
+    jsr     sdcard_init
+    addq.l  #4,SP
+    rts
+
+; D0: block number to read
+; A0: pointer to allocated 512 byte buffer
+; A1: pointer to allocated 1 byte buffer (no longer in A1 but originally should be. get off stack instead)
 .SDCARD_RD_BLK:
-    move.l D1,D0
+    move.l  4(SP),-(SP)                 ; copy original A1 onto the stack
+    move.l  A0,-(SP)
+    move.l  D0,-(SP)
+    jsr     sdcard_read_block
+    add.l   #12,SP
+    rts

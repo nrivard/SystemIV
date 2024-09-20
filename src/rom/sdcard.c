@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "serial.h"
 #include "sdcard.h"
 #include "spi.h"
 
@@ -117,7 +116,7 @@ DONE:
     return response.r1;
 }
 
-sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], uint8_t *token) {
+sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_data_token_t *token) {
     *token = SDCARD_DATA_TOKEN_NONE;
 
     sdcard_command_t read;

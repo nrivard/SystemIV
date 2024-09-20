@@ -30,6 +30,7 @@ Vectors::
     dcb.l   16,HandleGenericInterrupt   ; $30-3F reserved
     dcb.l   $C0,HandleGenericInterrupt  ; $40-FF user vectors
 VectorsEnd:
+    
 VectorCount: equ (VectorsEnd-Vectors)/4 ; 256 longwords
 
     section .text

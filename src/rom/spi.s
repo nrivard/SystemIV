@@ -12,6 +12,7 @@ SPI_CS          equ     (1<<5)
 SPI_MISO        equ     (1<<SPI_MISO_BIT)
 SPI_MOSI        equ     (1<<4)
 
+SPI_CS_MSK      equ    (SPI_CS^$FF)
 SPI_CLK_MSK     equ    (SPI_CLK^$FF)
 SPI_MOSI_MSK    equ    (SPI_MOSI^$FF)
 SPI_MISO_MSK    equ    (SPI_MISO^$FF)
@@ -32,18 +33,20 @@ SPIINIT::
     move.b  D0,SPI_PORT
     rts
 
-; C and TRAP interface to transfer the passed in byte and return received byte
-;
+; C interface to transfer the passed in byte and return received byte
+spi_transfer::
+    move.l  4(SP),D0
+    ;; fallthrough
+
+; ASM and TRAP interface to transfer passed in byte and return received byte
 ; params:
 ;   D0: the byte to send to the device
 ; returns:
 ;   D0: the received byte
 ; destroys:
-;   D0,D1
-spi_transfer::
+;   D0
 SPITX::
-    move.l  4(SP),D0
-    movem.l D2-D3,-(SP)
+    movem.l D1-D3,-(SP)
     move.l  D0,D1               ; D1 holds value to send
     clr.l   D0                  ; D0 holds return value
     moveq.l #7,D3               ; our index register
@@ -65,11 +68,11 @@ SPITX::
     dbra    D3,.BitLoop
 .Done:
     or.b    #(SPI_MOSI),SPI_PORT ; MOSI high (CLK should already be low)
-    movem.l (SP)+,D2-D3
+    movem.l (SP)+,D1-D3
     rts
 
 SPIASSERT::
-    andi.b  #SPI_CS,SPI_PORT
+    andi.b  #SPI_CS_MSK,SPI_PORT
     rts
 
 SPIDEASSERT::

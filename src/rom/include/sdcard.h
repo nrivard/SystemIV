@@ -69,4 +69,4 @@ sdcard_error_t sdcard_init(sdcard_device_t *device);
 /// @param buffer 
 /// @param token 
 /// @return error code. will contain `SDCARD_ERROR_FOUND` if error was found. read `token` for possible error reason
-sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], uint8_t *token);
+sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_data_token_t *token);

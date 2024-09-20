@@ -59,3 +59,6 @@ $(DISASSEMBLY): $(ELF)
 
 clean:
 	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) $(ELF) $(DISASSEMBLY)
+
+burn:
+	./burnroms.sh

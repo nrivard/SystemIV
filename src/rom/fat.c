@@ -27,9 +27,6 @@
 
 const char *fatz = "fats";
 
-#define FAT_GET_16(buffer, offset)  (((uint16_t)buffer[offset + 1] << 8) | ((uint16_t)buffer[offset]))
-#define FAT_GET_32(buffer, offset)  (((uint32_t)buffer[offset + 3] << 24) | ((uint32_t)buffer[offset + 2] << 16) | ((uint32_t)buffer[offset + 1] << 8) | ((uint32_t)buffer[offset]))
-
 #define FAT_VALID_SECTOR(block)     (block[0x1FE] == FAT_SECTOR_SIGNATURE_1 && block[0x1FF] == FAT_SECTOR_SIGNATURE_2)
 
 #define DEBUG_BYTE(byte)            serial_put_hex(byte); \
