@@ -6,6 +6,7 @@
 #include "fat.h"
 
 extern uint16_t _bss_start, _bss_end, _data_start, _data_end, _data_load_start, _data_load_end;
+extern uint8_t  _bootloader_start;
 
 /*
 ASCII Banner. Should look like:
@@ -53,7 +54,7 @@ __attribute__ ((__noreturn__)) void sysmain() {
     }
 
     // fetch MBR
-    uint8_t mbr[FAT_SECTOR_SIZE];
+    uint8_t *mbr = &_bootloader_start;
     sdcard_data_token_t token;
     error = sdcard_read_block(0, mbr, &token);
     if (error != SDCARD_NOERR) {
@@ -69,7 +70,7 @@ __attribute__ ((__noreturn__)) void sysmain() {
     serial_put_string("found.\r\n");
 
     // DEBUG: just print what we get in the first sector
-    for (int i = 0; i < 512; i++) {
+    for (int i = 0; i < FAT_SECTOR_SIZE; i++) {
         if (i != 0 && (i % 8) == 0) {
             serial_put_string("\r\n");
         }
@@ -85,7 +86,7 @@ __attribute__ ((__noreturn__)) void sysmain() {
     serial_put_hex(error);
     serial_put_string("\r\nHALTING\r\n");
 
-    while (1);
+    HALT();
 }
 
 char serial_get(void) {

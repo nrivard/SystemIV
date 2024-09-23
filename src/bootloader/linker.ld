@@ -11,43 +11,38 @@ MEMORY
   	MFP	: org = 0x00E00000, l = 1M
 }
 
-/* RAM layout */
-MEMORY
-{
-	VECTS	: org = 0x00000000, l = 0x000400,
-	OS		: org = 0x00000400, l = 0x000200,
-	USER	: org = ORIGIN(OS) + LENGTH(OS), l = ORIGIN(RAM) + LENGTH(RAM) - ORIGIN(USER)
-}
-
-PROVIDE(VECT_START = ORIGIN(VECTS));
+PROVIDE(RUN_START = 0x00002000); /* bootloader is loaded here */
 
 SECTIONS
 {
-  .text : ALIGN(4)
+  .text.init RUN_START : ALIGN(4)
   {
-    _code_start = .;
-    *(.vectors*)
+    _init = .;
+    KEEP(*(.init))
+    _init_end = .;
+  } > RAM
+
+  .text ALIGN(4) :
+  {
+    _code = .;
     *(.text*)
     *(.rodata*)
     _code_end = .;
-  } > ROM
+  } > RAM
 
   .data : ALIGN(4)
   {
     _data_start = .;
     *(.data*)
     _data_end = .;
-  } > OS AT > ROM
+  } > RAM
 
    .bss (NOLOAD) : ALIGN(4)
   {
     _bss_start = .;
     *(.bss*)
     _bss_end = .;
-  } > OS
+  } > RAM
  
   _end = .;
 }
-
-_data_load_start = LOADADDR(.data);
-_data_load_end = _data_load_start + (_data_end - _data_start);

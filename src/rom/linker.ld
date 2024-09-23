@@ -20,6 +20,7 @@ MEMORY
 }
 
 PROVIDE(VECT_START = ORIGIN(VECTS));
+PROVIDE(_bootloader_start = 0x00002000); /* addr to load bootloader */
 
 SECTIONS
 {

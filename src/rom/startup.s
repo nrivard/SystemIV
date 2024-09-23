@@ -48,7 +48,7 @@ START::
     bsr.w   SYSINIT
     jsr     MFPINIT
     jsr     SPIINIT
-.InterruptTest:
+.Heartbeat:
     lea.l   HandleTick,A0               ; copy HandleTick to timer c vector
     lea.l   MFP_VEC_TIMER_C,A1
     move.l  A0,(A1)

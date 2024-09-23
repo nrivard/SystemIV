@@ -7,7 +7,7 @@ BINARY_EVEN=$(NAME).even.$(EXT)
 BINARY_ODD=$(NAME).odd.$(EXT)
 MAPFILE=$(NAME).map
 DISASSEMBLY=$(NAME).dis
-ELF=bootloader.a
+ELF=firmware.a
 
 CPU?=68000
 

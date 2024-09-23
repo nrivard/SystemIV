@@ -19,6 +19,7 @@ HANDLETRAP13::
 .FunctionTable:
     dc.l    .SDCARD_INIT
     dc.l    .SDCARD_RD_BLK
+    dc.l    .XMODEMRECV
     dc.l    SPIINIT                     ; call into direct (should be removed!)
     dc.l    SPIASSERT                   ; call into direct (should be removed!)
     dc.l    SPIDEASSERT                 ; call into direct (should be removed!)
@@ -46,4 +47,13 @@ HANDLETRAP13::
     move.l  D0,-(SP)
     jsr     sdcard_read_block
     add.l   #12,SP
+    rts
+
+; D0: maxsize of the destination buffer
+; A0: pointer to buffer that is at least `maxsize` size
+.XMODEMRECV:
+    move.l  D0,-(SP)
+    move.l  A0,-(SP)
+    jsr     xmodem_recv
+    add.l   #8,SP
     rts

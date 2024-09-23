@@ -3,7 +3,7 @@
 ;; It will get loaded and executed from the top.
     public START
 
-    section text
+    section .text.init
 
 FAT_SIG_OFFSET_1        equ $1FE
 FAT_SIG_OFFSET_2        equ $1FF
@@ -56,7 +56,7 @@ FAT_GET_32 macro
 ;; 2. copy first sector of that partition
 ;; 3. execute boot code in that sector
 START:
-    lea     START(PC),A6        ; start of this sector
+    lea     RUN_START,A6        ; start of this sector
     clr.l   D7                  ; progress in booting
 .VerifySignature:
     cmp.b   #$55,FAT_SIG_OFFSET_1(A6)
@@ -76,13 +76,16 @@ START:
 
 .ReadPartitionLBA:
     move.l  FAT_MBR_PART_LBA(A5),D0     ; little-endian long of LBA
-    ENDIAN32 D0
-    pea     TOKEN(PC)
-    pea     BOOTVOLUME(PC)
-    move.l  D0,-(SP)
+    ENDIAN32 D0                         ; block #
     move.l  D0,VOLUMEID                 ; save start of volume
-    jsr     sdcard_read_block
-    tst.l   D0
+    lea     BOOTVOLUME(PC),A0
+    lea     TOKEN(PC),A1
+    move.l  #1,D1                       ; sdcard_read_block trap #
+    ; pea     TOKEN(PC)
+    ; pea     BOOTVOLUME(PC)
+    ; move.l  D0,-(SP)
+    trap    #13
+    tst.l   D0                          ; SDCARD_NOERR?
     bne     ERROR
     addq.l  #1,D7
     
@@ -136,25 +139,28 @@ ERROR:
     move.l  D7,D0
     rts
     
+; padding:
+;     cnop    $EA,FAT_MBR_PART_TABLE         ; padding up to where the partition table will be
+
+;     ds.b    FAT_SECTOR_SZ-FAT_MBR_PART_TABLE    ; reserve space for where the rest of the sector will be
     
-        ORG $11BE
+;         ORG $11BE
 
-PARTENTRY1: dc.b    $00, $82, $03, $00, $0c, $fe, $ff, $ff, $00, $20, $00, $00, $00, $04, $b7, $03
-PARTENTRY2: ds.b    16
-PARTENTRY3: ds.b    16
-PARTENTRY4: ds.b    16
+; PARTENTRY1: ds.b    16 ;$00, $82, $03, $00, $0c, $fe, $ff, $ff, $00, $20, $00, $00, $00, $04, $b7, $03
+; PARTENTRY2: ds.b    16
+; PARTENTRY3: ds.b    16
+; PARTENTRY4: ds.b    16
 
-    dc.b    $55
-    dc.b    $AA
+;     dc.b    $55
+;     dc.b    $AA
 
-BOOTVOLUME: ds.b    512
+BOOTVOLUME      equ     START+FAT_SECTOR_SZ
 
-VOLUMEID:   ds.l    1
-VOLUMEFAT:  ds.l    1
-VOLUMEROOT: ds.l    1
-VOLUMECLSTR: ds.l   1
-VOLUMETYPE: ds.b    1
-VOLUMESECS: ds.b    1
+VOLUMEID        equ     BOOTVOLUME+FAT_SECTOR_SZ
+VOLUMEFAT       equ     VOLUMEID+4      ; long
+VOLUMEROOT      equ     VOLUMEFAT+4     ; long
+VOLUMECLSTR     equ     VOLUMEROOT+4    ; long
+VOLUMETYPE      equ     VOLUMECLSTR+4   ; byte
+VOLUMESECS      equ     VOLUMETYPE+1    ; byte
 
-; word aligned
-TOKEN:      ds.b    2
+TOKEN           equ     VOLUMESECS+1    ; byte 

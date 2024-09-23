@@ -1,0 +1,49 @@
+#!/bin/sh
+
+USAGE="Usage: sudo mbr -f FILE DISK"
+
+badexit () {
+	echo "$1"
+	echo "$USAGE"
+	exit 1
+}
+
+while getopts "f:" options; do
+	case "${options}" in
+		f) 	FILE=${OPTARG} ;;
+		:) 	badexit "Error: -${OPTARG} requires an argument." ;;
+		*) 	badexit "Unknown argument." ;; 
+	esac
+done
+
+if [ ! -e "$FILE" ]; then
+	echo "$FILE does not point to a valid file."
+	exit 1
+fi
+
+FILESIZE=$(wc -c < "$FILE")
+if [ $FILESIZE != 446 ]; then
+	badexit "$FILE is not 446 bytes."
+fi
+
+shift $((OPTIND-1))
+DISK="$@"
+
+ISDISK=$(diskutil info -plist "$DISK" | plutil -extract "WholeDisk" raw -)
+if [ "$ISDISK" != "true" ]; then
+	badexit "You are trying to write to a partition which is dangerous. Specify the root disk instead."
+fi
+
+if [ "$EUID" -ne 0 ]; then
+	badexit "Must be run as superuser"
+fi
+
+echo "******************************************************************************************"
+echo "This is DANGEROUS. Verify the disk you have specified is the SD Card you want to write to."
+echo "******************************************************************************************"
+
+diskutil unmountDisk "$DISK"
+fdisk -u -f "$FILE" "$DISK"
+
+echo "MBR code written to $DISK."
+echo "To verify, run 'sudo dd if=$DISK bs=512 count=1 | hexdump -C'"
