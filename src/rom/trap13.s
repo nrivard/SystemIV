@@ -3,13 +3,13 @@
 ; D1 contains function code
 HANDLETRAP13::
     move.l  D1,-(SP)                    ; order matters here because calls below will pull
-    move.l  A1,-(SP)                    ; from the stack when A1/D1 was originally used!
+    move.l  A1,-(SP)                    ; from the stack when A1/D1 are used!
     cmp.l   #(.FunctionTableEnd-.FunctionTable)/4,D1
     bge     .Done
 .Found:
     add.l   D1,D1
     add.l   D1,D1                       ; adding twice is faster than shifting or mul
-    move.l  .FunctionTable(PC,D0),A1    ; get offset into function table
+    move.l  .FunctionTable(PC,D1),A1    ; get offset into function table
     jsr     (A1)
 .Done:
     move.l  (SP)+,A1

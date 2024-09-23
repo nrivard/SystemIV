@@ -72,18 +72,18 @@ START:
     beq     .ReadPartitionLBA
     cmp.b   #$0C,FAT_MBR_PART_TYPE(A5)
     bne     ERROR
-    addq.l  #1,D7
 
 .ReadPartitionLBA:
+    move.b  FAT_MBR_PART_TYPE(A5),VOLUMETYPE    ; TODO: can eliminate!
+    addq.l  #1,D7
+
     move.l  FAT_MBR_PART_LBA(A5),D0     ; little-endian long of LBA
     ENDIAN32 D0                         ; block #
     move.l  D0,VOLUMEID                 ; save start of volume
-    lea     BOOTVOLUME(PC),A0
-    lea     TOKEN(PC),A1
-    move.l  #1,D1                       ; sdcard_read_block trap #
-    ; pea     TOKEN(PC)
-    ; pea     BOOTVOLUME(PC)
-    ; move.l  D0,-(SP)
+
+    lea     BOOTVOLUME,A0
+    lea     TOKEN,A1
+    move.l  #1,D1                       ; sdcard_read_block
     trap    #13
     tst.l   D0                          ; SDCARD_NOERR?
     bne     ERROR
@@ -131,9 +131,19 @@ START:
     move.l  D1,VOLUMEROOT
     FAT_GET_32  A4,FAT_VOL_RT_CLSTR,D0
     move.l  D0,VOLUMECLSTR
-    
-    nop                                 ; just a placeholder to test if error!
-    
+
+    addq.l  #1,D7                       ; debug. did we get here?
+
+.ReadRoot:
+    lea     ROOTSECTOR,A0
+    lea     TOKEN,A1
+    move.l  VOLUMEROOT,D0
+    moveq.l #1,D1                       ; sdcard_read_block
+    trap    #13
+    tst.l   D0                          ; SDCARD_NOERR?
+    bne     ERROR
+    addq.l  #1,D7
+
 ; move error code into D0
 ERROR:
     move.l  D7,D0
@@ -155,12 +165,13 @@ ERROR:
 ;     dc.b    $AA
 
 BOOTVOLUME      equ     START+FAT_SECTOR_SZ
+ROOTSECTOR      equ     BOOTVOLUME+FAT_SECTOR_SZ
 
-VOLUMEID        equ     BOOTVOLUME+FAT_SECTOR_SZ
+VOLUMEID        equ     ROOTSECTOR+FAT_SECTOR_SZ ; long
 VOLUMEFAT       equ     VOLUMEID+4      ; long
 VOLUMEROOT      equ     VOLUMEFAT+4     ; long
 VOLUMECLSTR     equ     VOLUMEROOT+4    ; long
-VOLUMETYPE      equ     VOLUMECLSTR+4   ; byte
+VOLUMETYPE      equ     VOLUMECLSTR+4   ; byte (TODO: eliminate storing this to save space!)
 VOLUMESECS      equ     VOLUMETYPE+1    ; byte
 
 TOKEN           equ     VOLUMESECS+1    ; byte 

@@ -31,17 +31,15 @@ bool command_write(char *args[], int count);
 bool command_transfer(char *args[], int count);
 bool command_execute(char *args[], int count);
 bool command_spi(char *args[], int count);
-bool command_sdread_block(char *args[], int count);
 
 static Command commands[] = {
     {"rd", "rd <addr> (<length> = 1)", &command_read},
     {"wr", "wr <addr> <value1> (<value2>...<value8>)", &command_write},
     {"tx", "tx <addr>", &command_transfer},
-    {"ex", "ex <addr>", &command_execute},
-    {"sdr", "sdr <sector>", &command_sdread_block}
+    {"ex", "ex <addr>", &command_execute}
 };
 
-static fat_disk_t disk;
+// static fat_disk_t disk;
 
 char *command_read_input(char *buffer, int size) {
     int recvd = 0;
@@ -159,66 +157,66 @@ bool command_execute(char *args[], int count) {
     return function();
 }
 
-bool command_sdread_block(char *args[], int count) {
-    if (count < 1 || (strlen(args[0]) == 0)) {
-        return false;
-    }
+// bool command_sdread_block(char *args[], int count) {
+//     if (count < 1 || (strlen(args[0]) == 0)) {
+//         return false;
+//     }
 
-    if (disk.volumes[0].type == FS_UNKNOWN) {
-        serial_put_string("No valid FS found!");
-        return false;
-    }
+//     if (disk.volumes[0].type == FS_UNKNOWN) {
+//         serial_put_string("No valid FS found!");
+//         return false;
+//     }
 
-    uint8_t *addr = (uint8_t *)strtoul(args++[0], NULL, 16);
+//     uint8_t *addr = (uint8_t *)strtoul(args++[0], NULL, 16);
 
-    uint8_t block[FAT_SECTOR_SIZE];
-    uint8_t token;
-    if (sdcard_read_block((unsigned long)addr, block, &token) != SDCARD_NOERR) {
-        serial_put_string("Error read sdcard sector ");
-        serial_put_long((unsigned long)addr);
-        return false;
-    }
+//     uint8_t block[FAT_SECTOR_SIZE];
+//     uint8_t token;
+//     if (sdcard_read_block((unsigned long)addr, block, &token) != SDCARD_NOERR) {
+//         serial_put_string("Error read sdcard sector ");
+//         serial_put_long((unsigned long)addr);
+//         return false;
+//     }
 
-    for (int i = 0; i < FAT_SECTOR_SIZE; i++) {
-        if ((i % 8) == 0) {
-            serial_put_string("\r\n");
-            serial_put_long((unsigned long)i);
-            serial_put_string(":  ");
-        }
+//     for (int i = 0; i < FAT_SECTOR_SIZE; i++) {
+//         if ((i % 8) == 0) {
+//             serial_put_string("\r\n");
+//             serial_put_long((unsigned long)i);
+//             serial_put_string(":  ");
+//         }
 
-        serial_put_hex(block[i] & 0xFF);
-        serial_put(' ');
-    }
+//         serial_put_hex(block[i] & 0xFF);
+//         serial_put(' ');
+//     }
 
-    return true;
-}
+//     return true;
+// }
 
-bool init_fat(fat_disk_t *disk) {
-    if (fat_init(disk) != FAT_NOERR) {
-        return false;
-    }
+// bool init_fat(fat_disk_t *disk) {
+//     if (fat_init(disk) != FAT_NOERR) {
+//         return false;
+//     }
 
-    fat_volume_t *volume = &disk->volumes[0];
+//     fat_volume_t *volume = &disk->volumes[0];
 
-    if (volume->type == FS_UNKNOWN) {
-        serial_put_string("Unknown FS!\r\n");
-        return false;
-    }
+//     if (volume->type == FS_UNKNOWN) {
+//         serial_put_string("Unknown FS!\r\n");
+//         return false;
+//     }
 
-    serial_put_string("Found ");
-    serial_put_string(volume->type == FS_FAT16 ? "FAT16" : "FAT32");
+//     serial_put_string("Found ");
+//     serial_put_string(volume->type == FS_FAT16 ? "FAT16" : "FAT32");
 
-    serial_put_string(" volume at sector ");
-    serial_put_long(volume->volumeSector);
+//     serial_put_string(" volume at sector ");
+//     serial_put_long(volume->volumeSector);
 
-    serial_put_string("\r\nFAT  : ");
-    serial_put_long(volume->fatSector);
+//     serial_put_string("\r\nFAT  : ");
+//     serial_put_long(volume->fatSector);
 
-    serial_put_string("\r\nData : ");
-    serial_put_long(volume->dataSector);
+//     serial_put_string("\r\nData : ");
+//     serial_put_long(volume->dataSector);
 
-    return true;
-}
+//     return true;
+// }
 
 void shellac_main() {
     char buffer[0x80];
@@ -226,9 +224,6 @@ void shellac_main() {
     Command command;
 
     serial_put_string("Shellac v1.0\r\n");
-    
-    serial_put_string("Looking for FAT filesystem...\r\n");
-    init_fat(&disk);
 
     for(;;) {
         serial_put('>');

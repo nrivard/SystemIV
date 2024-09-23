@@ -5,6 +5,8 @@ MAPFILE=$(NAME).map
 DISASSEMBLY=$(NAME).dis
 ELF=$(NAME).a
 
+DISK?=/dev/disk14
+
 CPU?=68000
 
 AS=vasmm68k_mot
@@ -14,17 +16,18 @@ OBJCOPY=m68k-elf-objcopy
 OBJDUMP=m68k-elf-objdump
 
 ASFLAGS=-Felf -quiet -align -esc
-CFLAGS=-I ./include -I ./cstdlib/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
+CFLAGS=-I ./include -I ./include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
 
 SOURCES=mbr.s
+INCLUDES=include/Sixty-n8k_Private.h
 # Assume each source files makes an object file
 OBJECTS=$(addsuffix .o,$(basename $(SOURCES)))
 
 %o: %.s
 	$(AS) $(ASFLAGS) -o $@ $<
 
-all: $(BINARY)
+all: $(BINARY) $(INCLUDES)
 	$(MAKE) bootloader
 
 $(BINARY): $(ELF) $(DISASSEMBLY)
@@ -35,9 +38,8 @@ $(ELF): $(OBJECTS)
 
 bootloader: $(BINARY)
 	@echo "Creating bootloader..."
-	@truncate -s 446 $(BINARY)
 	@echo "Done."
-	@echo "To install, run 'sudo ./mbr -f $(BINARY) DISK' where 'DISK' is your SD card, like '/dev/disk14'"
+	@echo "To install, set 'DISK' in Makefile and run 'make mbr'"
 
 $(DISASSEMBLY): $(ELF)
 	$(OBJDUMP) --disassemble -S $< > $@
@@ -45,4 +47,5 @@ $(DISASSEMBLY): $(ELF)
 clean:
 	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) $(ELF) $(DISASSEMBLY)
 
-
+mbr: $(BINARY)
+	sudo ./mbr -f $(BINARY) $(DISK)

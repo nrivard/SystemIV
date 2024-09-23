@@ -1,9 +1,9 @@
 #include <stdint.h>
 #include "mfp.h"
-// #include "shellac.h"
+#include "shellac.h"
 #include "serial.h"
 #include "sdcard.h"
-#include "fat.h"
+// #include "fat.h"
 
 extern uint16_t _bss_start, _bss_end, _data_start, _data_end, _data_load_start, _data_load_end;
 extern uint8_t  _bootloader_start;
@@ -50,7 +50,7 @@ __attribute__ ((__noreturn__)) void sysmain() {
         serial_put_string("\r\nDevice status: ");
         serial_put_hex(device.status);
         serial_put_string("\r\n");
-        HALT();
+        goto Shell;
     }
 
     // fetch MBR
@@ -64,19 +64,19 @@ __attribute__ ((__noreturn__)) void sysmain() {
         serial_put_string("\r\nToken: ");
         serial_put_hex(token);
         serial_put_string("\r\n");
-        HALT();
+        goto Shell;
     }
 
     serial_put_string("found.\r\n");
 
     // DEBUG: just print what we get in the first sector
-    for (int i = 0; i < FAT_SECTOR_SIZE; i++) {
-        if (i != 0 && (i % 8) == 0) {
-            serial_put_string("\r\n");
-        }
-        serial_put_hex(mbr[i]);
-        serial_put(' ');
-    }
+    // for (int i = 0; i < FAT_SECTOR_SIZE; i++) {
+    //     if (i != 0 && (i % 8) == 0) {
+    //         serial_put_string("\r\n");
+    //     }
+    //     serial_put_hex(mbr[i]);
+    //     serial_put(' ');
+    // }
     
     serial_put_string("\r\nExecuting boot disk\r\n");
 
@@ -84,7 +84,35 @@ __attribute__ ((__noreturn__)) void sysmain() {
     error = ((int (*)(void))mbr)();
     serial_put_string("FATAL ERROR: ");
     serial_put_hex(error);
-    serial_put_string("\r\nHALTING\r\n");
+
+Shell:
+    serial_put_string("\r\nLaunching Shellac.\r\n");
+    shellac_main();
+
+    // DEBUG: just print what we get in the first sector
+    // char *debug = (char *)(mbr + FAT_SECTOR_SIZE);
+    // for (int i = 0; i < FAT_SECTOR_SIZE + 20; i++) {
+    //     if (i != 0 && (i % 8) == 0) {
+    //         serial_put_string("\r\n");
+    //     }
+    //     serial_put_hex(debug[i]);
+    //     serial_put(' ');
+    // }
+
+    // VolumeInfo *volume = (VolumeInfo *)(mbr + 1024);
+    // serial_put_string("ID   :");
+    // serial_put_long(volume->id);
+    // serial_put_string("\r\FAT  :");
+    // serial_put_long(volume->fat);
+    // serial_put_string("\r\nROOT :");
+    // serial_put_long(volume->root);
+    // serial_put_string("\r\nCLSTR:");
+    // serial_put_long(volume->cluster);
+    // serial_put_string("\r\nTYPE :");
+    // serial_put_hex(volume->type);
+    // serial_put_string("\r\nSECS :");
+    // serial_put_hex(volume->secs);
+    // serial_put_string("\r\n");
 
     HALT();
 }
