@@ -23,6 +23,12 @@ FAT_VOL_FAT_16          equ $16
 FAT_VOL_HIDDEN          equ $1C
 FAT_VOL_FAT_32          equ $24
 FAT_VOL_RT_CLSTR        equ $2C
+
+FAT_DIR_FILENAME        equ $00
+FAT_DIR_ATTR            equ $0B
+FAT_DIR_CLSTR_HI        equ $14
+FAT_DIR_CLSTR_LO        equ $1A
+FAT_DIR_SIZE            equ $1C
         
 ; arg: register containing lower word to convert endianness
 ENDIAN16 macro
@@ -135,14 +141,18 @@ START:
     addq.l  #1,D7                       ; debug. did we get here?
 
 .ReadRoot:
+    clr.l   D6                          ; sector count. if our file isn't in first sector we have failed
+.FetchSector:
+    cmp.l   VOLUMESECS,D6
+    bge     ERROR                       ; run out of sectors to fetch
     lea     ROOTSECTOR,A0
     lea     TOKEN,A1
     move.l  VOLUMEROOT,D0
+    add.l   D6,D0                       ; sector number to fetch
     moveq.l #1,D1                       ; sdcard_read_block
     trap    #13
     tst.l   D0                          ; SDCARD_NOERR?
     bne     ERROR
-    addq.l  #1,D7
 
 ; move error code into D0
 ERROR:

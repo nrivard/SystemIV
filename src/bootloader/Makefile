@@ -38,6 +38,8 @@ $(ELF): $(OBJECTS)
 
 bootloader: $(BINARY)
 	@echo "Creating bootloader..."
+	@wc -c $(BINARY)
+	@truncate -s 446 $(BINARY)
 	@echo "Done."
 	@echo "To install, set 'DISK' in Makefile and run 'make mbr'"
 
