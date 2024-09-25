@@ -1,11 +1,19 @@
 
 ;; this code is intended to reside in the MBR of a FAT partitioned bootable device
-;; It will get loaded and executed from the top.
+;; It will get loaded and executed from the top at $00002000. It is intended to:
+;; 
+;; 1. find a FAT formatted partition
+;; 2. calculate location of root dir in that partition
+;; 3. look for "SYSTEMIV.BIN" file in root dir, copy it, and execute it
+;;
+;; NOTE: for now, for size and complexity reasons, this will only look in the first cluster
+;; of the root dir for the intended file AND it will only load a file that is smaller than one cluster.
+;; this does no FAT table chaining to search or copy files larger than a cluster
     public START
 
     section .text.init
 
-FAT_SIG_OFFSET_1        equ $1FE
+FAT_SIG_OFFSET          equ $1FE
 FAT_SIG_OFFSET_2        equ $1FF
 FAT_SECTOR_SZ           equ $200
 
@@ -42,12 +50,18 @@ ENDIAN32 macro
     ror.w #8,\1
     endm
     
+; arg1: base-pointer to number you want to convert
+; arg2: offset into base-pointer you want to convert
+; arg3: destination for 16 bit number
 FAT_GET_16 macro
     move.b  \2+1(\1),\3
     ror.w   #8,\3
     move.b  \2(\1),\3
     endm
     
+; arg1: base-pointer to number you want to convert
+; arg2: offset into base-pointer you want to convert
+; arg3: destination for 16 bit number
 FAT_GET_32 macro
     move.b  \2+3(\1),\3
     ror.w   #8,\3
@@ -58,16 +72,11 @@ FAT_GET_32 macro
     move.b  \2(\1),\3
     endm
 
-;; 1. find a partition
-;; 2. copy first sector of that partition
-;; 3. execute boot code in that sector
 START:
     lea     RUN_START,A6        ; start of this sector
     clr.l   D7                  ; progress in booting
 .VerifySignature:
-    cmp.b   #$55,FAT_SIG_OFFSET_1(A6)
-    bne     ERROR
-    cmp.b   #$AA,FAT_SIG_OFFSET_2(A6)
+    cmp.w   #$55AA,FAT_SIG_OFFSET(A6)
     bne     ERROR
     addq.l  #1,D7
 
@@ -80,26 +89,19 @@ START:
     bne     ERROR
 
 .ReadPartitionLBA:
-    move.b  FAT_MBR_PART_TYPE(A5),VOLUMETYPE    ; TODO: can eliminate!
     addq.l  #1,D7
 
-    move.l  FAT_MBR_PART_LBA(A5),D0     ; little-endian long of LBA
-    ENDIAN32 D0                         ; block #
-    move.l  D0,VOLUMEID                 ; save start of volume
-
-    lea     BOOTVOLUME,A0
-    lea     TOKEN,A1
-    move.l  #1,D1                       ; sdcard_read_block
-    trap    #13
-    tst.l   D0                          ; SDCARD_NOERR?
+    move.l  FAT_MBR_PART_LBA(A5),D3     ; little-endian long of LBA
+    ENDIAN32 D3                         ; block #
+    move.l  D3,VOLUMEID                 ; save start of volume
+    clr.l   D4                          ; index should be 0 here
+    jsr     NEXTSECTOR
     bne     ERROR
     addq.l  #1,D7
     
 .VerifyVolume:
-    lea     FAT_SECTOR_SZ(A6),A4        ; volume pointer
-    cmp.b   #$55,FAT_SIG_OFFSET_1(A4)
-    bne     ERROR
-    cmp.b   #$AA,FAT_SIG_OFFSET_2(A4)
+    lea     SECTORDATA,A4        ; volume pointer
+    cmp.w   #$55AA,(A4)
     bne     ERROR
     cmp.b   #$00,FAT_VOL_BPS(A4)        ; lower byte of $0200 (little-endian)
     bne     ERROR
@@ -113,7 +115,7 @@ START:
     FAT_GET_16  A4,FAT_VOL_RES,D0       ; D0: reserved (still 0 from sdcard_read_block)
     
     FAT_GET_16  A4,FAT_VOL_RT_ENTRIES,D1 ; D1: rootDirSectors
-    mulu    #32,D1                      ; multiply by size of fat_record_t
+    asl.l   #5,D1                        ; multiply by size of fat_record_t
     add.l   #FAT_SECTOR_SZ-1,D1
     divu    #FAT_SECTOR_SZ,D1
     and.l   #$FFFF,D1                   ; clear upper word junk
@@ -135,29 +137,107 @@ START:
     move.l  D0,VOLUMEFAT
     add.l   VOLUMEID,D1                 ; dataSector
     move.l  D1,VOLUMEROOT
-    FAT_GET_32  A4,FAT_VOL_RT_CLSTR,D0
-    move.l  D0,VOLUMECLSTR
 
     addq.l  #1,D7                       ; debug. did we get here?
 
 .ReadRoot:
-    clr.l   D6                          ; sector count. if our file isn't in first sector we have failed
+    move.l  VOLUMEROOT,D3
+    clr.l   D4                          ; sector count. if our file isn't in first cluster return an error
 .FetchSector:
-    cmp.l   VOLUMESECS,D6
-    bge     ERROR                       ; run out of sectors to fetch
-    lea     ROOTSECTOR,A0
-    lea     TOKEN,A1
-    move.l  VOLUMEROOT,D0
-    add.l   D6,D0                       ; sector number to fetch
-    moveq.l #1,D1                       ; sdcard_read_block
-    trap    #13
-    tst.l   D0                          ; SDCARD_NOERR?
+    jsr     NEXTSECTOR
     bne     ERROR
+    addq.l  #1,D4                       ; inc index
+
+.ReadDirLoop:
+    lea     SECTORDATA,A0
+.IterateFileLoop:
+    cmp.l   SECTORDATAEND,A0
+    bge     .FetchSector
+.CheckFile:
+    cmp.b   #0,(A0)                     ; first byte a zero? end of dir with no matches :(
+    beq     ERROR
+    cmp.b   #$E5,(A0)                   ; first byte $E5? unused.
+    beq     .NextFile
+.CheckName:
+    move.b  #(SYSIVEND-SYSIV-1),D1      ; compare filename to SYSTEMIV.BIN
+    move.l  A0,A1                       ; copy ptr to A1
+    lea     SYSIV,A2
+.NameLoop:
+    cmp.b   (A1)+,(A2)+
+    bne     .NextFile
+    dbra    D1,.NameLoop
+
+.Found:
+    move.l  FAT_DIR_SIZE(A0),D5
+    ENDIAN32 D5                         ; get size of the file
+
+    move.w  FAT_DIR_CLSTR_HI(A0),D3     ; fetch hi cluster
+    ENDIAN16 D3
+    swap    D3
+    move.w  FAT_DIR_CLSTR_LO(A0),D3     ; fetch lo cluster
+    ENDIAN16 D3
+
+.Cluster2Lba:
+    subq.l  #2,D3                       ; ((clstr - 2) * clusters_per_sector) + cluster_start
+    move.b  VOLUMESECS,D0               ; can't use mulu bc that is 16bit * 16bit. Cluster can be larger than 16 bit
+.MultLoop:                              ; so take advantage of the fact that sectors-per-cluster is always a power of 2
+    asr.b   #1,D0
+    beq     .MultDone
+    asl.l   #1,D3
+    bra     .MultLoop
+.MultDone:
+    add.l   VOLUMEROOT,D3
+
+.FetchFile:
+    clr.l   D4                          ; current sector
+    movea.l KERN_DEST,A6                ; copy destination
+.FetchFileLoop:
+    jsr     NEXTSECTOR
+    move.l  A4,A5                       ; copy SECTORDATA ptr
+    move.w  #FAT_SECTOR_SZ-1,D2         ; size of each sector
+.CopyFileLoop:
+    move.b  (A5)+,(A6)+
+    subq.l  #1,D5                       ; sub from size of the file
+    beq     .RunKernel
+    dbra    D2,.CopyFileLoop
+.RunKernel:
+    jmp     KERN_DEST                   ; jump into kernel land and hope for the best
+
+.NextFile:
+    add.l   #32,A0
+    bra     .IterateFileLoop
+
 
 ; move error code into D0
 ERROR:
     move.l  D7,D0
     rts
+
+; fetches next sector until it runs out of available sectors
+; D3: starting sector of cluster
+; D4: index of sector in cluster to fetch
+; data will be put in SECTORDATA buffer
+; relies on VOLUME* variables being setup properly
+; returns zero in D0 if data was fetched, nonzero otherwise
+NEXTSECTOR:
+    cmp.b   VOLUMESECS,D4
+    bge     .Error                      ; run out of sectors to fetch
+    lea     SECTORDATA,A0
+    lea     TOKEN,A1
+    move.l  D3,D0
+    add.l   D4,D0                       ; sector number to fetch
+    moveq.l #1,D1                       ; sdcard_read_block
+    trap    #13
+    tst.l   D0                          ; SDCARD_NOERR?
+    bra     .Done                       ; D0 is already correct
+.Error:
+    moveq.l #1,D0
+.Done:
+    rts
+    
+
+SYSIV:  dc.b "SYSTEMIVBIN"
+SYSIVEND:
     
 ; padding:
 ;     cnop    $EA,FAT_MBR_PART_TABLE         ; padding up to where the partition table will be
@@ -174,14 +254,13 @@ ERROR:
 ;     dc.b    $55
 ;     dc.b    $AA
 
-BOOTVOLUME      equ     START+FAT_SECTOR_SZ
-ROOTSECTOR      equ     BOOTVOLUME+FAT_SECTOR_SZ
+SECTORDATA      equ     START+FAT_SECTOR_SZ
+SECTORDATAEND   equ     SECTORDATA+FAT_SECTOR_SZ
 
-VOLUMEID        equ     ROOTSECTOR+FAT_SECTOR_SZ ; long
+VOLUMEID        equ     SECTORDATAEND   ; long
 VOLUMEFAT       equ     VOLUMEID+4      ; long
 VOLUMEROOT      equ     VOLUMEFAT+4     ; long
-VOLUMECLSTR     equ     VOLUMEROOT+4    ; long
-VOLUMETYPE      equ     VOLUMECLSTR+4   ; byte (TODO: eliminate storing this to save space!)
+VOLUMETYPE      equ     VOLUMEROOT+4    ; byte (TODO: eliminate storing this to save space!)
 VOLUMESECS      equ     VOLUMETYPE+1    ; byte
 
 TOKEN           equ     VOLUMESECS+1    ; byte 

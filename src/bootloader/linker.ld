@@ -11,7 +11,8 @@ MEMORY
   	MFP	: org = 0x00E00000, l = 1M
 }
 
-PROVIDE(RUN_START = 0x00002000); /* bootloader is loaded here */
+PROVIDE(RUN_START   = 0x00002000); /* bootloader is loaded here */
+PROVIDE(KERN_DEST   = 0x00040000); /* kernel load destination */
 
 SECTIONS
 {
