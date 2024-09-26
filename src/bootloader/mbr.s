@@ -73,7 +73,7 @@ FAT_GET_32 macro
     endm
 
 START:
-    lea     RUN_START,A6        ; start of this sector
+    lea     _bootloader_start,A6        ; start of this sector
     clr.l   D7                  ; progress in booting
 .VerifySignature:
     cmp.w   #$55AA,FAT_SIG_OFFSET(A6)
@@ -192,7 +192,7 @@ START:
 
 .FetchFile:
     clr.l   D4                          ; current sector
-    move.l  #KERN_DEST,A6               ; copy destination
+    move.l  #_os_start,A6               ; copy destination
 .FetchFileLoop:
     jsr     NEXTSECTOR
     bne     ERROR
@@ -204,9 +204,7 @@ START:
     beq     .RunKernel
     dbra    D2,.CopyFileLoop
 .RunKernel:
-    ; addq.l  #1,D7
-    ; bra     ERROR
-    jmp     KERN_DEST                   ; jump into kernel land and hope for the best
+    jmp     _os_start                   ; jump into kernel land and hope for the best
 
 .NextFile:
     add.l   #32,A6

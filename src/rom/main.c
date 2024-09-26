@@ -1,34 +1,27 @@
 #include <stdint.h>
+#include <time.h>
 #include "mfp.h"
 #include "shellac.h"
 #include "serial.h"
 #include "sdcard.h"
-// #include "fat.h"
+#include "xmodem.h"
 
 extern uint16_t _bss_start, _bss_end, _data_start, _data_end, _data_load_start, _data_load_end;
-extern uint8_t  _bootloader_start;
+extern uint8_t  _bootloader_start, _os_start;
 
-/*
-ASCII Banner. Should look like:
-   _____            __                     ___    __
-  / ___/__  _______/ /____  ____ ___      /=/ |  / /
-  \__ \/ / / / ___/ __/ _ \/ __ `__ \    /=/| | / / 
- ___/ / /_/ (__  ) /_/  __/ / / / / /   /=/ | |/ /  
-/____/\__, /____/\__/\___/_/ /_/ /_/   /=/  |___/   
-     \____/
-*/
-static const char banner[] = \
-"\r\n" \
-"   _____            __                     ___    __\r\n" \
-"  / ___/__  _______/ /____  ____ ___      /=/ |  / /\r\n" \
-"  \\__ \\/ / / / ___/ __/ _ \\/ __ `__ \\    /=/| | / /\r\n" \
-" ___/ / /_/ (__  ) /_/  __/ / / / / /   /=/ | |/ /\r\n" \
-"/____/\\__, /____/\\__/\\___/_/ /_/ /_/   /=/  |___/\r\n" \
-"     \\____/\r\n";
+uint8_t boot_from_disk(void);
+uint8_t boot_from_serial(void);
 
 static inline __attribute__((__noreturn__)) void HALT() {
     while(1);
 }
+
+void fatal_error(uint8_t error) {
+    serial_put_string("FATAL ERROR: ");
+    serial_put_hex(error);
+    serial_put_string("\r\n");
+    shellac_main();
+} 
 
 __attribute__ ((__noreturn__)) void sysmain() {
     // initialize DATA
@@ -37,21 +30,27 @@ __attribute__ ((__noreturn__)) void sysmain() {
     // zero out BSS
     for (uint16_t *bss = &_bss_start; bss < &_bss_end; *bss++ = 0);
 
-    serial_put_string(banner);
-
+    serial_put_string("Sixty n8k ROM v1\r\n");
     serial_put_string("Searching for bootable media...");
+    
+    // try to boot from disk first
+    boot_from_disk();
 
+    // if we are here, booting from disk failed. try to boot from serial
+    boot_from_serial();
+
+    HALT();
+}
+
+uint8_t boot_from_disk() {
     sdcard_device_t device;
     sdcard_error_t error = sdcard_init(&device);
     if (error != SDCARD_NOERR || device.status != SDCARD_STATUS_READY) {
-        serial_put_string("No bootable media found.\r\n");
-        serial_put_string("Error: ");
-        serial_put_hex(error);
-        serial_put_string("\r\nDevice status: ");
-        serial_put_hex(device.status);
-        serial_put_string("\r\n");
-        goto Shell;
+        serial_put_string("No disk found.\r\n");
+        return error;
     }
+
+    serial_put_string("disk found.\r\nExecuting boot disk\r\n");
 
     // fetch MBR
     uint8_t *mbr = &_bootloader_start;
@@ -64,57 +63,36 @@ __attribute__ ((__noreturn__)) void sysmain() {
         serial_put_string("\r\nToken: ");
         serial_put_hex(token);
         serial_put_string("\r\n");
-        goto Shell;
+        return error;
     }
-
-    serial_put_string("found.\r\n");
-
-    // DEBUG: just print what we get in the first sector
-    // for (int i = 0; i < FAT_SECTOR_SIZE; i++) {
-    //     if (i != 0 && (i % 8) == 0) {
-    //         serial_put_string("\r\n");
-    //     }
-    //     serial_put_hex(mbr[i]);
-    //     serial_put(' ');
-    // }
-    
-    serial_put_string("\r\nExecuting boot disk\r\n");
 
     // execute mbr boot code! if it returns we got an error
     error = ((int (*)(void))mbr)();
-    serial_put_string("FATAL ERROR: ");
-    serial_put_hex(error);
 
-Shell:
-    serial_put_string("\r\nLaunching Shellac.\r\n");
-    shellac_main();
+    fatal_error(error);
+    return error;
+}
 
-    // DEBUG: just print what we get in the first sector
-    // char *debug = (char *)(mbr + FAT_SECTOR_SIZE);
-    // for (int i = 0; i < FAT_SECTOR_SIZE + 20; i++) {
-    //     if (i != 0 && (i % 8) == 0) {
-    //         serial_put_string("\r\n");
-    //     }
-    //     serial_put_hex(debug[i]);
-    //     serial_put(' ');
-    // }
+uint8_t boot_from_serial() {
+    serial_put_string("Waiting to receive via serial...");
 
-    // VolumeInfo *volume = (VolumeInfo *)(mbr + 1024);
-    // serial_put_string("ID   :");
-    // serial_put_long(volume->id);
-    // serial_put_string("\r\FAT  :");
-    // serial_put_long(volume->fat);
-    // serial_put_string("\r\nROOT :");
-    // serial_put_long(volume->root);
-    // serial_put_string("\r\nCLSTR:");
-    // serial_put_long(volume->cluster);
-    // serial_put_string("\r\nTYPE :");
-    // serial_put_hex(volume->type);
-    // serial_put_string("\r\nSECS :");
-    // serial_put_hex(volume->secs);
-    // serial_put_string("\r\n");
+    // place OS at desired location and cap it at 32k, same requirement as the disk bootloader version
+    uint8_t error = xmodem_recv(&_os_start, 0x8000);
 
-    HALT();
+    // if we don't delay we can overwhelm the MFP
+    delay(10);
+
+    if (error != XMODEM_NOERR) {
+        serial_put_string("failed.\r\n");
+        fatal_error(error);
+    }
+
+    // execute the received OS
+    error = ((int (*)(void))&_os_start)();
+
+    // if we got here, the OS failed
+    fatal_error(error);
+    return error;
 }
 
 char serial_get(void) {

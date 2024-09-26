@@ -1,6 +1,6 @@
 rwildcard=$(wildcard $1) $(foreach d,$1,$(call rwildcard,$(addsuffix /$(notdir $d),$(wildcard $(dir $d)*))))
 
-NAME=SystemN8
+NAME=SixtyN8k
 EXT=rom
 BINARY=$(NAME).$(EXT)
 BINARY_EVEN=$(NAME).even.$(EXT)

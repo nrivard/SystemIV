@@ -7,6 +7,9 @@ TRAP13_SDCARD_RD_BLK_N::    equ     2
 TRAP13_SDCARD_WR_BLK::      equ     3
 TRAP13_SDCARD_WR_BLK_N::    equ     4
 TRAP13_XMODEM_RECV::        equ     5
+TRAP13_SERIAL_GET::         equ     6
+TRAP13_SERIAL_PUT::         equ     7
+TRAP13_SERIAL_BYTEAVAIL::   equ     8
 
 ; D1 contains function code
 HANDLETRAP13::
@@ -31,10 +34,9 @@ HANDLETRAP13::
     dc.l    .SDCARD_WR_BLK
     dc.l    .SDCARD_WR_BLK_N
     dc.l    .XMODEMRECV
-    dc.l    SPIINIT                     ; call into direct (should be removed!)
-    dc.l    SPIASSERT                   ; call into direct (should be removed!)
-    dc.l    SPIDEASSERT                 ; call into direct (should be removed!)
-    dc.l    .SPI_TX                     ; should be removed!
+    dc.l    MFPRECV                     ; call into direct
+    dc.l    MFPSEND                     ; call into direct
+    dc.l    MFPBYTEAVAIL                ; call into direct
 .FunctionTableEnd:
 
 ; D0: byte to transfer

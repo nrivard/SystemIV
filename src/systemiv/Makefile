@@ -1,13 +1,11 @@
 rwildcard=$(wildcard $1) $(foreach d,$1,$(call rwildcard,$(addsuffix /$(notdir $d),$(wildcard $(dir $d)*))))
 
-NAME=SystemN8
-EXT=rom
+NAME=systemiv
+EXT=bin
 BINARY=$(NAME).$(EXT)
-BINARY_EVEN=$(NAME).even.$(EXT)
-BINARY_ODD=$(NAME).odd.$(EXT)
 MAPFILE=$(NAME).map
 DISASSEMBLY=$(NAME).dis
-ELF=firmware.a
+ELF=kernel.a
 
 CPU?=68000
 
@@ -37,7 +35,7 @@ OBJECTS=$(addsuffix .o,$(basename $(SOURCES)))
 	$(AS) $(ASFLAGS) -o $@ $<
 
 all: $(BINARY) $(INCLUDES)
-	@$(MAKE) roms
+	@$(MAKE) kernel
 
 $(BINARY): $(ELF) $(DISASSEMBLY)
 	@$(OBJCOPY) -O binary $< $@
@@ -45,20 +43,11 @@ $(BINARY): $(ELF) $(DISASSEMBLY)
 $(ELF): $(OBJECTS)
 	@$(LD) $(LDFLAGS) -nostdlib $^ -o $(ELF)
 
-roms: $(BINARY_EVEN) $(BINARY_ODD)
-	@echo "Creating roms..."
-
-$(BINARY_EVEN): $(BINARY)
-	srec_cat -output $(BINARY_EVEN) -Binary $(BINARY) -Binary -Split 2 0
-
-$(BINARY_ODD): $(BINARY)
-	srec_cat -output $(BINARY_ODD) -Binary $(BINARY) -Binary -Split 2 1
+kernel: $(BINARY_EVEN) $(BINARY_ODD)
+	@echo "Creating kernel..."
 
 $(DISASSEMBLY): $(ELF)
 	$(OBJDUMP) --disassemble -S $< > $@
 
 clean:
 	@rm $(OBJECTS) $(BINARY) $(BINARY_EVEN) $(BINARY_ODD) $(ELF) $(DISASSEMBLY)
-
-burn:
-	./burnroms.sh

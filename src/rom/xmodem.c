@@ -27,7 +27,7 @@ typedef struct {
 
 // initiates xmodem transfer and waits for data to be avail
 // returns zero if no byte received, non-zero otherwise
-int xmodem_start_tx() {
+uint8_t xmodem_start_tx() {
     int byte_avail = 0;
     while (!byte_avail) {
         // send NAK
@@ -67,12 +67,12 @@ bool xmodem_packet_valid(uint8_t expected_block, xmodem_packet_t *packet) {
 }
 
 // returns 0 on success, otherwise an error code
-int xmodem_recv(uint8_t *destination, int maxsize) {
+uint8_t xmodem_recv(uint8_t *destination, int maxsize) {
     static xmodem_packet_t packet;
 
     // send NACK until we get START_OF_HEADER
     if(!xmodem_start_tx()) {
-        return XMODEM_TIMEOUT;
+        return XMODEM_ERROR_TIMEOUT;
     }
 
     int ret = 0;
@@ -104,7 +104,7 @@ int xmodem_recv(uint8_t *destination, int maxsize) {
 
             case EOT:
                 serial_put(ACK);
-                return 0;
+                return XMODEM_NOERR;
 
             case ESC:
             default:

@@ -2,21 +2,11 @@ OUTPUT_FORMAT("elf32-m68k")
 
 ENTRY(START)
 
-/* physical memory layout */
-MEMORY
-{
-  	RAM	: org = 0x00000000, l = 1M
-  	ROM	: org = 0x00400000, l = 1M
-	  XPN	: org = 0x00800000, l = 1M
-  	MFP	: org = 0x00E00000, l = 1M
-}
-
-PROVIDE(RUN_START   = 0x00002000); /* bootloader is loaded here */
-PROVIDE(KERN_DEST   = 0x00080000); /* kernel load destination */
+INCLUDE ../lib/common.ld
 
 SECTIONS
 {
-  .text.init RUN_START : ALIGN(4)
+  .text.init _bootloader_start : ALIGN(4)
   {
     _init = .;
     KEEP(*(.init))
