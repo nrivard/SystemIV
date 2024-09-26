@@ -16,18 +16,17 @@ OBJCOPY=m68k-elf-objcopy
 OBJDUMP=m68k-elf-objdump
 
 ASFLAGS=-Felf -quiet -align -esc
-CFLAGS=-I ./include -I ./include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
+CFLAGS=-march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
 
 SOURCES=mbr.s
-INCLUDES=include/Sixty-n8k_Private.h
 # Assume each source files makes an object file
 OBJECTS=$(addsuffix .o,$(basename $(SOURCES)))
 
 %o: %.s
 	$(AS) $(ASFLAGS) -o $@ $<
 
-all: $(BINARY) $(INCLUDES)
+all: $(BINARY)
 	$(MAKE) bootloader
 
 $(BINARY): $(ELF) $(DISASSEMBLY)
