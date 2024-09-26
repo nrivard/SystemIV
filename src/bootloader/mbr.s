@@ -91,6 +91,7 @@ START:
 .ReadPartitionLBA:
     addq.l  #1,D7
 
+    move.b  #$40,VOLUMESECS             ; default value of 64 sectors per cluster which needs to be set before calling NEXTSECTOR
     move.l  FAT_MBR_PART_LBA(A5),D3     ; little-endian long of LBA
     ENDIAN32 D3                         ; block #
     move.l  D3,VOLUMEID                 ; save start of volume
@@ -101,7 +102,7 @@ START:
     
 .VerifyVolume:
     lea     SECTORDATA,A4        ; volume pointer
-    cmp.w   #$55AA,(A4)
+    cmp.w   #$55AA,FAT_SIG_OFFSET(A4)
     bne     ERROR
     cmp.b   #$00,FAT_VOL_BPS(A4)        ; lower byte of $0200 (little-endian)
     bne     ERROR
@@ -149,18 +150,18 @@ START:
     addq.l  #1,D4                       ; inc index
 
 .ReadDirLoop:
-    lea     SECTORDATA,A0
+    lea     SECTORDATA,A6
 .IterateFileLoop:
-    cmp.l   SECTORDATAEND,A0
+    cmp.l   SECTORDATAEND,A6
     bge     .FetchSector
 .CheckFile:
-    cmp.b   #0,(A0)                     ; first byte a zero? end of dir with no matches :(
+    cmp.b   #0,(A6)                     ; first byte a zero? end of dir with no matches :(
     beq     ERROR
-    cmp.b   #$E5,(A0)                   ; first byte $E5? unused.
+    cmp.b   #$E5,(A6)                   ; first byte $E5? unused.
     beq     .NextFile
 .CheckName:
     move.b  #(SYSIVEND-SYSIV-1),D1      ; compare filename to SYSTEMIV.BIN
-    move.l  A0,A1                       ; copy ptr to A1
+    move.l  A6,A1                       ; copy ptr to A1
     lea     SYSIV,A2
 .NameLoop:
     cmp.b   (A1)+,(A2)+
@@ -168,13 +169,14 @@ START:
     dbra    D1,.NameLoop
 
 .Found:
-    move.l  FAT_DIR_SIZE(A0),D5
+    addq.l  #1,D7
+    move.l  FAT_DIR_SIZE(A6),D5
     ENDIAN32 D5                         ; get size of the file
 
-    move.w  FAT_DIR_CLSTR_HI(A0),D3     ; fetch hi cluster
+    move.w  FAT_DIR_CLSTR_HI(A6),D3     ; fetch hi cluster
     ENDIAN16 D3
     swap    D3
-    move.w  FAT_DIR_CLSTR_LO(A0),D3     ; fetch lo cluster
+    move.w  FAT_DIR_CLSTR_LO(A6),D3     ; fetch lo cluster
     ENDIAN16 D3
 
 .Cluster2Lba:
@@ -190,9 +192,10 @@ START:
 
 .FetchFile:
     clr.l   D4                          ; current sector
-    movea.l KERN_DEST,A6                ; copy destination
+    move.l  #KERN_DEST,A6               ; copy destination
 .FetchFileLoop:
     jsr     NEXTSECTOR
+    bne     ERROR
     move.l  A4,A5                       ; copy SECTORDATA ptr
     move.w  #FAT_SECTOR_SZ-1,D2         ; size of each sector
 .CopyFileLoop:
@@ -201,10 +204,12 @@ START:
     beq     .RunKernel
     dbra    D2,.CopyFileLoop
 .RunKernel:
+    ; addq.l  #1,D7
+    ; bra     ERROR
     jmp     KERN_DEST                   ; jump into kernel land and hope for the best
 
 .NextFile:
-    add.l   #32,A0
+    add.l   #32,A6
     bra     .IterateFileLoop
 
 

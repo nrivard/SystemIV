@@ -4,6 +4,9 @@
 #include "sdcard.h"
 #include "spi.h"
 
+#define SDCARD_OCR_CCS      0b01000000
+#define SDCARD_MAX_BUSY_ATTEMPTS  0x1000
+
 void sdcard_send_command(const sdcard_command_t *const command, 
                          sdcard_response_t *response);
 
@@ -11,18 +14,19 @@ void sdcard_send_app_command(const sdcard_command_t *const command,
                              sdcard_response_t *response);
 
 uint8_t sdcard_wait_response(void);
+uint8_t sdcard_wait_busy(void);
 void sdcard_receive_r7(sdcard_response_t *response);
 
 
 // com
-const sdcard_command_t CMD0 =  {0x40, 0x00000000, 0x95};
-const sdcard_command_t CMD8 =  {0x48, 0x000001AA, 0x87};
-const sdcard_command_t CMD16 = {0x50, 0x00000200, 0x00};  // configured for 512 byte block size
-const sdcard_command_t CMD55 = {0x77, 0x00000000, 0x00};
-const sdcard_command_t CMD58 = {0x7A, 0x00000000, 0x00};
+static const sdcard_command_t CMD0 =  {0x40, 0x00000000, 0x95};
+static const sdcard_command_t CMD8 =  {0x48, 0x000001AA, 0x87};
+static const sdcard_command_t CMD16 = {0x50, 0x00000200, 0x00};  // configured for 512 byte block size
+static const sdcard_command_t CMD55 = {0x77, 0x00000000, 0x00};
+static const sdcard_command_t CMD58 = {0x7A, 0x00000000, 0x00};
 
 // app commands
-const sdcard_command_t CMD41 = {0x69, 0x40000000, 0x00};
+static const sdcard_command_t CMD41 = {0x69, 0x40000000, 0x00};
 
 sdcard_error_t sdcard_init(sdcard_device_t *device) {
     device->status = SDCARD_STATUS_UNKNOWN;
@@ -127,8 +131,8 @@ sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_dat
     spi_cs_assert();
 
     sdcard_response_t response;
-    sdcard_send_app_command(&read, &response);   
-    if (response.r1 != 0) {
+    sdcard_send_command(&read, &response);   
+    if (response.r1 != SDCARD_NOERR) {
         goto DONE;
     } 
 
@@ -145,6 +149,140 @@ sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_dat
     // "read" 16 bit CRC
     spi_read();
     spi_read();
+
+DONE:
+    spi_cs_deassert();
+    return response.r1;
+}
+
+sdcard_error_t sdcard_read_block_n(uint32_t start, uint32_t count, uint8_t *buffer, sdcard_data_token_t *token) {
+    *token = SDCARD_DATA_TOKEN_NONE;
+
+    sdcard_command_t multiread;
+    multiread.index = 0x52;
+    multiread.arg = start;
+    multiread.crc = 0x00;
+
+    spi_cs_assert();
+
+    sdcard_response_t response;
+    sdcard_send_command(&multiread, &response);
+    if (response.r1 != SDCARD_NOERR) {
+        goto DONE;
+    }
+
+    for (int i = 0; i < count; i++) {
+        // need to wait for data start token for each block
+        *token = sdcard_wait_response();
+        if (*token != SDCARD_DATA_TOKEN_BLOCK) {
+            response.r1 |= SDCARD_ERROR_FOUND;
+            goto DONE;
+        }
+
+        for (int j = 0; j < 512; j++) {
+            *buffer++ = spi_read();
+        }
+
+        // read 16 bit CRC for this block
+        spi_read();
+        spi_read();
+    }
+
+    sdcard_command_t stop;
+    stop.index = 0x4C;
+    stop.arg = 0x00;
+    stop.crc = 0x00;
+
+    sdcard_send_command(&stop, &response);
+    if (response.r1 != SDCARD_NOERR) {
+        goto DONE;
+    }
+    
+    *token = sdcard_wait_response();
+
+DONE:
+    spi_cs_deassert();
+    return response.r1;
+}
+
+sdcard_error_t sdcard_write_block(uint32_t block, uint8_t const buffer[512], sdcard_data_token_t *token) {
+    *token = SDCARD_DATA_TOKEN_NONE;
+
+    sdcard_command_t write;
+    write.index = 0x58;
+    write.arg = block;
+    write.crc = 0x00;
+
+    spi_cs_assert();
+
+    sdcard_response_t response;
+    sdcard_send_command(&write, &response);   
+    if (response.r1 != SDCARD_NOERR) {
+        goto DONE;
+    }
+
+    spi_transfer(SDCARD_DATA_TOKEN_BLOCK);
+
+    for (int i = 0; i < 512; i++) {
+        spi_transfer(*buffer++);
+    }
+
+    // send dummy CRC
+    spi_transfer(0x00);
+    spi_transfer(0x00);
+
+    *token = sdcard_wait_response();
+    if ((*token & 0x1F) != SDCARD_DATA_RESPONSE_ACCEPTED) {
+        response.r1 |= SDCARD_ERROR_FOUND;
+        goto DONE;
+    }
+
+    *token = sdcard_wait_busy();
+
+DONE:
+    spi_cs_deassert();
+    return response.r1;
+}
+
+sdcard_error_t sdcard_write_block_n(uint32_t start, uint32_t count, uint8_t const * buffer, sdcard_data_token_t *token) {
+    *token = SDCARD_DATA_TOKEN_NONE;
+
+    sdcard_command_t multiwrite;
+    multiwrite.index = 0x59;
+    multiwrite.arg = start;
+    multiwrite.crc = 0x00;
+
+    spi_cs_assert();
+
+    sdcard_response_t response;
+    sdcard_send_command(&multiwrite, &response);
+    if (response.r1 != SDCARD_NOERR) {
+        goto DONE;
+    }
+
+    for (int i = 0; i < count; i++) {
+        // send data start token for each block
+        spi_transfer(SDCARD_DATA_TOKEN_MULTI);
+
+        for (int j = 0; j < 512; j++) {
+            spi_transfer(*buffer++);
+        }
+
+        // send 16 bit
+        spi_transfer(0x00);
+        spi_transfer(0x00);
+
+        *token = sdcard_wait_response();
+        if ((*token & 0x1F) != SDCARD_DATA_RESPONSE_ACCEPTED) {
+            response.r1 |= SDCARD_ERROR_FOUND;
+            goto DONE;
+        }
+
+        *token = sdcard_wait_busy();
+    }
+
+    spi_transfer(SDCARD_DATA_TOKEN_STOP);
+    *token = sdcard_wait_busy();
 
 DONE:
     spi_cs_deassert();
@@ -177,6 +315,13 @@ uint8_t sdcard_wait_response() {
     int tries = 8;
     uint8_t retval;
     while (--tries >= 0 && (retval = spi_read()) == 0xFF);
+    return retval;
+}
+
+uint8_t sdcard_wait_busy() {
+    int tries = SDCARD_MAX_BUSY_ATTEMPTS;
+    uint8_t retval;
+    while (--tries >= 0 && (retval = spi_read()) == 0x00);
     return retval;
 }
 

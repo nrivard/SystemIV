@@ -94,7 +94,7 @@ fat_error_t fat_init(fat_disk_t *disk) {
 
     // fetch MBR
     uint8_t block[FAT_SECTOR_SIZE];
-    uint8_t token;
+    sdcard_data_token_t token;
     if (sdcard_read_block(0, block, &token) != SDCARD_NOERR) {
         return FAT_ERROR_SDCARD;
     }

@@ -12,7 +12,7 @@ MEMORY
 }
 
 PROVIDE(RUN_START   = 0x00002000); /* bootloader is loaded here */
-PROVIDE(KERN_DEST   = 0x00040000); /* kernel load destination */
+PROVIDE(KERN_DEST   = 0x00080000); /* kernel load destination */
 
 SECTIONS
 {

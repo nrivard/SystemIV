@@ -51,3 +51,6 @@ clean:
 
 mbr: $(BINARY)
 	sudo ./mbr -f $(BINARY) $(DISK)
+
+eject:
+	diskutil eject $(DISK)
