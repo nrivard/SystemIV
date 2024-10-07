@@ -1,7 +1,5 @@
     section .text
 
-    public MFP_VECBASE, MFP_IMRB, MFP_ISRB, MFP_IRQ_TIMER_C, MFP_VEC_TIMER_C
-
 MFP_BASE::                      equ     $E00001
 MFP_GPIP::                      equ     MFP_BASE+($00<<1)
 MFP_DDR::                       equ     MFP_BASE+($02<<1)
@@ -37,6 +35,7 @@ MFP_IRQ_TIMER_C_MASK::          equ     ~MFP_IRQ_TIMER_C
 MFP_VECBASE                     equ     $40
 MFP_VEC_TIMER_C                 equ     ((MFP_VECBASE+$05)*4)   ; 5th vector, longword size
 
+mfp_init::
 MFPINIT::
     move.b  #$FE,MFP_DDR                                        ; set all but bit 0 of GPIO as outputs
 .Timer:                                                         ;         CLK     | prescale | UCR bit 7 | timer value | RC toggle

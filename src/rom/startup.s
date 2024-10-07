@@ -56,6 +56,7 @@ START::
     and.w   #$F8FF,SR                   ; enable all interrupts
 .Done:
     jsr     sysmain
+    move.w  SR,D0
 
 SYSINIT:
     clr.b   SystemJiffies

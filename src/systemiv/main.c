@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include "sdcard.h"
+#include "serial.h"
 
 extern uint16_t _bss_start, _bss_end, _data_start, _data_end, _data_load_start, _data_load_end;
 
@@ -25,11 +27,15 @@ static inline __attribute__((__noreturn__)) void HALT() {
 }
 
 __attribute__ ((__noreturn__)) void sysmain() {
-    // initialize DATA
-    for (uint16_t *data = &_data_start, *load = &_data_load_start; load < &_data_load_end; *data++ = *load++);
+    // bring serial port up first
+    serial_init();
+    serial_put_string(banner);
 
-    // zero out BSS
-    for (uint16_t *bss = &_bss_start; bss < &_bss_end; *bss++ = 0);
+    sdcard_device_t disk;
+    if (sdcard_init(&disk) != SDCARD_NOERR) {
+        serial_put_string("No disk found\r\n");
+        HALT();
+    }
 
-    HALT();
+    
 }

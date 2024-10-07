@@ -4,15 +4,6 @@ ENTRY(START)
 
 INCLUDE ../lib/common.ld
 
-/* physical memory layout */
-MEMORY
-{
-  	RAM	: org = 0x00000000, l = 1M
-  	ROM	: org = 0x00400000, l = 1M
-	  XPN	: org = 0x00800000, l = 1M
-  	MFP	: org = 0x00E00000, l = 1M
-}
-
 SECTIONS
 {
   .text.init _os_start : ALIGN(4)

@@ -16,7 +16,7 @@ OBJCOPY=m68k-elf-objcopy
 OBJDUMP=m68k-elf-objdump
 
 ASFLAGS=-Felf -quiet -align -esc
-CFLAGS=-I ./include -I ./cstdlib/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
+CFLAGS=-I ./include -I ./cstdlib/include -I ./hardware/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
 
 # Assume source files in Makefile directory are source files for project
