@@ -1,0 +1,50 @@
+    section .text
+
+SPG8_DATA       equ     $800001
+SPG8_CMD        equ     $800003
+
+SPG8_CLK_SEL    equ     %00000011
+SPG8_DEV_SEL    equ     %00001100
+SPG8_DEN        equ     %00010000
+SPG8_IEN        equ     %00100000
+SPG8_BUSY       equ     %01000000
+SPG8_ITC        equ     %10000000
+
+SPG8_DEN_MSK     equ     ~SPG8_DEN
+SPG8_CLK_SEL_MSK equ     ~SPG8_CLK_SEL
+
+SPG8_INIT::
+    move.b  #$03,SPG8_CMD
+    rts
+
+SPG8_TX::
+    move.l  4(SP),D0
+    move.b  D0,SPG8_DATA
+.Loop:
+    btst.b  #7,SPG8_CMD
+    beq     .Loop
+    move.b  SPG8_DATA,D0
+    rts
+
+SPG8_ASSERT::
+    move.b  SPG8_CMD,D0
+    ori.b   #SPG8_DEN,D0
+    move.b  D0,SPG8_CMD
+    rts
+
+SPG8_DEASSERT::
+    move.b  SPG8_CMD,D0
+    and.b   #SPG8_DEN_MSK,D0
+    move.b  D0,SPG8_CMD
+    rts
+
+SPG8_SET_SPEED::
+    move.l  D1,-(SP)
+    move.l  8(SP),D0
+    move.b  SPG8_CMD,D1
+    and.b   #SPG8_CLK_SEL,D0     ; mask non-clock bits
+    and.b   #SPG8_CLK_SEL_MSK,D1 ; clear cmd contents
+    or.b    D0,D1
+    move.b  D1,SPG8_CMD
+    move.l  (SP)+,D1
+    rts

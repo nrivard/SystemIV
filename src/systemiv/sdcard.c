@@ -28,9 +28,18 @@ static const sdcard_command_t CMD58 = {0x7A, 0x00000000, 0x00};
 // app commands
 static const sdcard_command_t CMD41 = {0x69, 0x40000000, 0x00};
 
+static const char* sdcard_device_type_msgs[] = {
+    "Unknown",
+    "SD card V1",
+    "SD card V2 SC",
+    "SD card V2 XC"
+};
+
 sdcard_error_t sdcard_init(sdcard_device_t *device) {
     device->status = SDCARD_STATUS_UNKNOWN;
     device->type = SDCARD_DEVICE_NONE;
+
+    spi_init();
 
     // toggle ENABLE to sync card timing up
     spi_cs_assert();
@@ -108,6 +117,9 @@ sdcard_error_t sdcard_init(sdcard_device_t *device) {
         }
     }
 
+    // turn on fastest speed
+    spi_set_speed(spi_speed_fastest);
+
     // initialized and device type is set. response.r1 is already NOERR
     device->status = SDCARD_STATUS_READY;
     goto DONE;
@@ -135,7 +147,7 @@ sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_dat
     sdcard_send_command(&read, &response);   
     if (response.r1 != SDCARD_NOERR) {
         goto DONE;
-    } 
+    }
 
     *token = sdcard_wait_response();
     if (*token != SDCARD_DATA_TOKEN_BLOCK) {
@@ -313,7 +325,7 @@ void sdcard_send_app_command(const sdcard_command_t *const command, sdcard_respo
 
 uint8_t sdcard_wait_response() {
     // NCR is 0 to 8 bytes of wait time, beyond that is out of spec
-    int tries = 8;
+    int tries = 0x1000;
     uint8_t retval;
     while (--tries >= 0 && (retval = spi_read()) == 0xFF);
     return retval;
@@ -330,4 +342,8 @@ void sdcard_receive_r7(sdcard_response_t *response) {
     for (int i = 0; i < 4; i++) {
         response->r7[i] = spi_read();
     }
+}
+
+const char *sdcard_device_type_msg(sdcard_device_type_t type) {
+    return sdcard_device_type_msgs[type];
 }

@@ -11,3 +11,4 @@ MEMORY
 
 PROVIDE(_bootloader_start = 0x00002000); /* addr to load bootloader */
 PROVIDE(_os_start = 0x00080000);         /* addr to load OS */
+PROVIDE(_phys_end = ORIGIN(RAM) + LENGTH(RAM));

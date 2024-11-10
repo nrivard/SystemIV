@@ -17,8 +17,7 @@ SPI_CLK_MSK     equ    (SPI_CLK^$FF)
 SPI_MOSI_MSK    equ    (SPI_MOSI^$FF)
 SPI_MISO_MSK    equ    (SPI_MISO^$FF)
 
-; C interface to initialization
-spi_init::
+
 ; Sets pin roles and initial values
 ; destroys:
 ;   D0
@@ -34,7 +33,7 @@ SPIINIT::
     rts
 
 ; C interface to transfer the passed in byte and return received byte
-spi_transfer::
+SPITXC::
     move.l  4(SP),D0
     ;; fallthrough
 

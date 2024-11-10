@@ -25,7 +25,7 @@ typedef enum {
     SDCARD_DEVICE_V1,
     SDCARD_DEVICE_V2_SC,    // standard capacity v2 SD card
     SDCARD_DEVICE_V2_XC     // high/extended capacity v2 SD card
-} sdcard_device_type;
+} sdcard_device_type_t;
 
 typedef enum {
     SDCARD_DATA_TOKEN_NONE  = 0xFF,

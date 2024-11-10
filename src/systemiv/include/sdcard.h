@@ -25,7 +25,7 @@ typedef enum {
     SDCARD_DEVICE_V1,
     SDCARD_DEVICE_V2_SC,    // standard capacity v2 SD card
     SDCARD_DEVICE_V2_XC     // high/extended capacity v2 SD card
-} sdcard_device_type;
+} sdcard_device_type_t;
 
 typedef enum {
     SDCARD_DATA_TOKEN_NONE  = 0xFF,
@@ -63,7 +63,7 @@ typedef struct {
 
 typedef struct {
     sdcard_status_t status;
-    sdcard_device_type type;
+    sdcard_device_type_t type;
 } __attribute__((packed)) sdcard_device_t;
 
 sdcard_error_t sdcard_init(sdcard_device_t *device);
@@ -96,4 +96,9 @@ sdcard_error_t sdcard_write_block(uint32_t block, uint8_t const buffer[512], sdc
 /// @param buffer   a buffer that is at least `512 * count` bytes long. It is up to you that this is safe!
 /// @param token 
 /// @return error code. will contain `SDCARD_ERROR_FOUND` if error was found. read `token` for possible error reason
-sdcard_error_t sdcard_read_block_n(uint32_t start, uint32_t count, uint8_t * const buffer, sdcard_data_token_t *token);
+sdcard_error_t sdcard_write_block_n(uint32_t start, uint32_t count, uint8_t const * buffer, sdcard_data_token_t *token);
+
+/// @brief returns a user-facing device type string
+/// @param type 
+/// @return const string describing device type
+const char *sdcard_device_type_msg(sdcard_device_type_t type);

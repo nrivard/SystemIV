@@ -1,4 +1,4 @@
-#define NPROC         4  // maximum number of processes
+#define NPROC        16  // maximum number of processes
 #define NOFILE       16  // open files per process
 #define NFILE       100  // open files per system
 #define NINODE       50  // maximum number of active i-nodes

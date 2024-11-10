@@ -1,4 +1,7 @@
 #include <stdint.h>
+
+#include "irq.h"
+#include "kalloc.h"
 #include "sdcard.h"
 #include "serial.h"
 
@@ -31,11 +34,20 @@ __attribute__ ((__noreturn__)) void sysmain() {
     serial_init();
     serial_put_string(banner);
 
+    kinit();
+
+    serial_put_string("Searching for disk...");
     sdcard_device_t disk;
-    if (sdcard_init(&disk) != SDCARD_NOERR) {
-        serial_put_string("No disk found\r\n");
-        HALT();
+    if (sdcard_init(&disk) != SDCARD_NOERR || disk.status != SDCARD_STATUS_READY || disk.type == SDCARD_DEVICE_NONE) {
+        serial_put_string("not found\r\n");
+    } else {
+        serial_put_string("found ");
+        serial_put_string(sdcard_device_type_msg(disk.type));
+        serial_put_string("\r\n");
     }
 
-    
+    // turn interrupts back on
+    irq_on();
+
+    HALT();
 }

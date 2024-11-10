@@ -15,9 +15,10 @@ LD=m68k-elf-ld
 OBJCOPY=m68k-elf-objcopy
 OBJDUMP=m68k-elf-objdump
 
-ASFLAGS=-Felf -quiet -align -esc
-CFLAGS=-I ./include -I ./cstdlib/include -I ./hardware/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall
+ASFLAGS=-Felf -quiet -align -esc -I ./hardware/include
+CFLAGS=-I ./include -I ./cstdlib/include -I ./hardware/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall -O1
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
+DEFINES=-D SPIGATE
 
 # Assume source files in Makefile directory are source files for project
 CSOURCES=$(call rwildcard,*.c)
@@ -29,7 +30,7 @@ SOURCES=$(ASMSOURCES) $(CSOURCES)
 OBJECTS=$(addsuffix .o,$(basename $(SOURCES)))
 
 %.o : %.c
-	$(CC) -c $(CFLAGS) -o $@ $<
+	$(CC) -c $(CFLAGS) $(DEFINES) -o $@ $<
 
 %.o: %.s 
 	$(AS) $(ASFLAGS) -o $@ $<

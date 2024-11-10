@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#define     MK68K_IRQ_MASK      0x0700
+
 static inline uint16_t m68k_rd_sr() {
     uint16_t x;
     asm volatile (
