@@ -2,6 +2,7 @@
 #include <ctype.h>
 
 #include "kalloc.h"
+#include "printf.h"
 
 extern uint8_t _end[];
 extern uint8_t _phys_end[];
@@ -15,8 +16,9 @@ struct {
 } kmem;
 
 void kinit() {
-    // build freelist it up one page at a time. but this means the "first" page has no
+    // first page has NULL as `next`, which signals no more pages
     kmem.freelist = NULL;
+    // now build initial freelist up one page at a time. 
     for (uint8_t *pg = (uint8_t *)PGROUNDUP((uint32_t)_end); pg + PGSIZE < _phys_end; pg += PGSIZE) {
         kfree(pg);
     }
@@ -24,7 +26,7 @@ void kinit() {
 
 void kfree(void *pg) {
     if ((uint32_t)pg % PGSIZE != 0 || pg < _end || pg > _phys_end) {
-        // panic
+        panic("Out of bounds kfree!");
     }
 
     linked_list_t *prev = (linked_list_t *)pg;

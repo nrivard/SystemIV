@@ -1,3 +1,5 @@
+#pragma once
+
 #define NPROC        16  // maximum number of processes
 #define NOFILE       16  // open files per process
 #define NFILE       100  // open files per system
@@ -11,3 +13,7 @@
 #define FSSIZE       2000  // size of file system in blocks
 #define MAXPATH      128   // maximum file path name
 #define USERSTACK    1     // user stack pages
+
+static inline __attribute__((__noreturn__)) void HALT() {
+    while(1);
+}

@@ -9,6 +9,6 @@
 #define     serial_byte_avail()     mfp_byte_avail()
 /// END OF SIXTY-N8K BLOCK ///
 
-void serial_put_string(const char *);
+void serial_put_string(const char *s);
 void serial_put_hex(const char c);
 void serial_put_long(const unsigned long d);
