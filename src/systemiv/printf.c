@@ -42,6 +42,6 @@ void printf(const char *fmt, ...) {
 }
 
 void panic(const char *s) {
-    printf("PANIC: %s\r\n", s);
+    printf("PANIC: %s\n", s);
     HALT();
 }

@@ -19,7 +19,7 @@ static inline __attribute__((__noreturn__)) void HALT() {
 void fatal_error(uint8_t error) {
     serial_put_string("FATAL ERROR: ");
     serial_put_hex(error);
-    serial_put_string("\r\n");
+    serial_put_string("\n");
     shellac_main();
 } 
 
@@ -30,7 +30,7 @@ __attribute__ ((__noreturn__)) void sysmain() {
     // zero out BSS
     for (uint16_t *bss = &_bss_start; bss < &_bss_end; *bss++ = 0);
 
-    serial_put_string("Sixty n8k ROM v1\r\n");
+    serial_put_string("Sixty n8k ROM v1\n");
     serial_put_string("Searching for bootable media...");
     
     // try to boot from disk first
@@ -46,23 +46,23 @@ uint8_t boot_from_disk() {
     sdcard_device_t device;
     sdcard_error_t error = sdcard_init(&device);
     if (error != SDCARD_NOERR || device.status != SDCARD_STATUS_READY) {
-        serial_put_string("No disk found.\r\n");
+        serial_put_string("No disk found.\n");
         return error;
     }
 
-    serial_put_string("disk found.\r\nExecuting boot disk\r\n");
+    serial_put_string("disk found.\nExecuting boot disk\n");
 
     // fetch MBR
     uint8_t *mbr = &_bootloader_start;
     sdcard_data_token_t token;
     error = sdcard_read_block(0, mbr, &token);
     if (error != SDCARD_NOERR) {
-        serial_put_string("MBR could not be read.\r\n");
+        serial_put_string("MBR could not be read.\n");
         serial_put_string("Error: ");
         serial_put_hex(error);
-        serial_put_string("\r\nToken: ");
+        serial_put_string("\nToken: ");
         serial_put_hex(token);
-        serial_put_string("\r\n");
+        serial_put_string("\n");
         return error;
     }
 
@@ -83,7 +83,7 @@ uint8_t boot_from_serial() {
     delay(10);
 
     if (error != XMODEM_NOERR) {
-        serial_put_string("failed.\r\n");
+        serial_put_string("failed.\n");
         fatal_error(error);
     }
 

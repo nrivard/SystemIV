@@ -38,12 +38,12 @@ const char *fatz = "fats";
 #define DEBUG_KEY_BYTE(key, byte)  serial_put_string(key); \
                                    serial_put_string(": "); \
                                    serial_put_hex(byte); \
-                                   serial_put_string("\r\n");
+                                   serial_put_string("\n");
 
 #define DEBUG_KEY_LONG(key, lng)  serial_put_string(key); \
                                    serial_put_string(": "); \
                                    serial_put_long(lng); \
-                                   serial_put_string("\r\n");
+                                   serial_put_string("\n");
 
 // NOTE! All multi-byte numbers for on-disk records are LITTLE ENDIAN
 

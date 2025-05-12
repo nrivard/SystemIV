@@ -7,6 +7,8 @@
 extern uint8_t _end[];
 extern uint8_t _phys_end[];
 
+#define PGROUNDUP(mem)  ((mem+(PGSIZE-1)) & ~(PGSIZE-1))
+
 typedef struct ll {
     struct ll *next;
 } linked_list_t;

@@ -10,7 +10,7 @@ int spigate_transfer(int data) {
     return *spigate_data;
 }
 
-void spigate_set_speed(int speed) {
+void spigate_set_speed(spigate_speed_t speed) {
     uint8_t cmd = *spigate_cmd;
     cmd &= ~SPIGATE_CMD_CLK_SEL;
     cmd |= speed & SPIGATE_CMD_CLK_SEL;

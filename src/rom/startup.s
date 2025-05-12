@@ -116,6 +116,6 @@ SystemUptime::  ds.l    $01
 
     section .rodata
 
-IRQError:   dc.b    "IRQ Error!\r\n\0"
-IRQBusErr:  dc.b    "Bus Error!\r\n\0"
-IRQAddrErr: dc.b    "Addr Error!\r\n\0"
+IRQError:   dc.b    "IRQ Error!\n\0"
+IRQBusErr:  dc.b    "Bus Error!\n\0"
+IRQAddrErr: dc.b    "Addr Error!\n\0"

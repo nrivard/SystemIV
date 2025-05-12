@@ -30,4 +30,4 @@ void spigate_assert(void);
 void spigate_deassert(void);
 
 // turn on fastest speed
-void spigate_set_speed(int);
+void spigate_set_speed(spigate_speed_t);

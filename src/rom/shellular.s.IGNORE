@@ -272,7 +272,7 @@ ShellCmdTable:
     Command "ex\0\0", ShellExecute, ShellExUsg
 ShellCmdTableEnd:
 
-ShellEOL::       dc.b   "\r\n\0"
+ShellEOL::       dc.b   "\n\0"
 
 ShellReadUsg:   dc.b    "rd <addr> (<length>)\0"
 ShellWriteUsg:  dc.b    "wr <addr> <value1> (<value2>...<value8>)\0"
@@ -280,8 +280,8 @@ ShellTxUsg:     dc.b    "tx <addr>\0"
 ShellExUsg:     dc.b    "ex <addr>\0"
 
 ShellVersion    equ     ($01+'0')
-ShellWelcome:   dc.b    "Shellular v", ShellVersion, "\r\n\0"
+ShellWelcome:   dc.b    "Shellular v", ShellVersion, "\n\0"
 ShellInvalid:   dc.b    "Invalid command: \"\0"
 ShellInvalidEnd: dc.b   "\"\0"
 ShellBadUsg:    dc.b    "Usage:\0"
-ShellDebugMsg:  dc.b    "DEBUGGING TOKENS\r\n\0"
+ShellDebugMsg:  dc.b    "DEBUGGING TOKENS\n\0"

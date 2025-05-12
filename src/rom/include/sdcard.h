@@ -63,7 +63,7 @@ typedef struct {
 
 typedef struct {
     sdcard_status_t status;
-    sdcard_device_type type;
+    sdcard_device_type_t type;
 } __attribute__((packed)) sdcard_device_t;
 
 sdcard_error_t sdcard_init(sdcard_device_t *device);

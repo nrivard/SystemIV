@@ -101,7 +101,7 @@ bool command_read(char *args[], int count) {
     // // printf("Reading %d bytes from %p", len, addr);
     for (int i = 0; i < len; i++) {
         if ((i % 8) == 0) {
-            serial_put_string("\r\n");
+            serial_put_string("\n");
             serial_put_long((unsigned long)&addr[i]);
             serial_put_string(":  ");
         }
@@ -135,13 +135,13 @@ bool command_transfer(char *args[], int count) {
 
     uint8_t *addr = (uint8_t *)strtoul(args[0], NULL, 16);
 
-    serial_put_string("Waiting for XModem transfer...\r\nPress ESC to cancel\r\n");
+    serial_put_string("Waiting for XModem transfer...\nPress ESC to cancel\n");
 
     int error = xmodem_recv(addr, 0x8000);
 
     if (error) {
         serial_put_hex(error);
-        serial_put_string("\r\n");
+        serial_put_string("\n");
     }
 
     return true;
@@ -179,7 +179,7 @@ bool command_execute(char *args[], int count) {
 
 //     for (int i = 0; i < FAT_SECTOR_SIZE; i++) {
 //         if ((i % 8) == 0) {
-//             serial_put_string("\r\n");
+//             serial_put_string("\n");
 //             serial_put_long((unsigned long)i);
 //             serial_put_string(":  ");
 //         }
@@ -199,7 +199,7 @@ bool command_execute(char *args[], int count) {
 //     fat_volume_t *volume = &disk->volumes[0];
 
 //     if (volume->type == FS_UNKNOWN) {
-//         serial_put_string("Unknown FS!\r\n");
+//         serial_put_string("Unknown FS!\n");
 //         return false;
 //     }
 
@@ -209,10 +209,10 @@ bool command_execute(char *args[], int count) {
 //     serial_put_string(" volume at sector ");
 //     serial_put_long(volume->volumeSector);
 
-//     serial_put_string("\r\nFAT  : ");
+//     serial_put_string("\nFAT  : ");
 //     serial_put_long(volume->fatSector);
 
-//     serial_put_string("\r\nData : ");
+//     serial_put_string("\nData : ");
 //     serial_put_long(volume->dataSector);
 
 //     return true;
@@ -223,12 +223,12 @@ void shellac_main() {
     Input input;
     Command command;
 
-    serial_put_string("Shellac v1.0\r\n");
+    serial_put_string("Shellac v1.0\n");
 
     for(;;) {
         serial_put('>');
         if (!command_read_input(buffer, sizeof(buffer))) {
-            serial_put_string("FATAL: couldn't read user input!\r\n");
+            serial_put_string("FATAL: couldn't read user input!\n");
             return;
         }
 
@@ -237,7 +237,7 @@ void shellac_main() {
         if (!command_parse(&input, &command)) {
             serial_put_string("Invalid command: \"");
             serial_put_string(input.params[0]);
-            serial_put_string("\"\r\n");
+            serial_put_string("\"\n");
             continue;
         }
 
@@ -246,6 +246,6 @@ void shellac_main() {
             serial_put_string(command.usage);
         }
 
-        serial_put_string("\r\n");
+        serial_put_string("\n");
     }
 }
