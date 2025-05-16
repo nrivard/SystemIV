@@ -19,9 +19,10 @@ void proc_bootstrap() {
         panic("Couldn't bootstrap init process");
     }
 
-    initproc = p;
     strcpy(p->name, "init.d");
     p->status = PROC_RUNNABLE;
+    
+    initproc = p;
 }
 
 // initializes a process

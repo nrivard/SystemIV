@@ -1,5 +1,6 @@
 #pragma once
 
+#include <proc.h>
 #include <stdint.h>
 
 #define     MK68K_IRQ_MASK      0x0700
@@ -41,8 +42,28 @@ static inline uint16_t m68k_rd_sr() {
 
 static inline void m68k_wr_sr(uint16_t sr) {
     asm volatile (
-        "move.w   %0,%%sr" 
+        "move.w     %0,%%sr" 
         : // no output
         : "d" (sr)
+    );
+}
+
+static inline void m68k_save_ctx(proc_ctx_t *ctx) {
+    asm volatile (
+        "movem.l    %%d2-%%d7/%%a2-%%usp, %0\n\t" \
+        "move.l     %%usp, %1"
+        : "=m" (*ctx), "=m" (ctx->sp)
+        :
+        :
+    );
+}
+
+static inline void m68k_load_ctx(proc_ctx_t *ctx) {
+    asm volatile (
+        "move.l     %0, %%usp\n\t" \
+        "movem.l    %1, %%d2-%%d7/%%a2-%%a6"
+        : "=m" (ctx->sp), "=m" (*ctx)
+        :
+        :
     );
 }
