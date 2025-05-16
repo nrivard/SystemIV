@@ -18,7 +18,7 @@ OBJDUMP=m68k-elf-objdump
 ASFLAGS=-Felf -quiet -align -esc -I ./hardware/include
 CFLAGS=-I ./include -I ./cstdlib/include -I ./hardware/include -march=$(CPU) -nostdlib -fno-pie -fno-pic -fno-stack-protector -ffreestanding -fno-exceptions -fno-delete-null-pointer-checks -Wall -O1
 LDFLAGS=-T linker.ld -Map=$(MAPFILE)
-DEFINES=-D SPIGATE
+# DEFINES=-D SPIGATE
 
 # Assume source files in Makefile directory are source files for project
 CSOURCES=$(call rwildcard,*.c)
