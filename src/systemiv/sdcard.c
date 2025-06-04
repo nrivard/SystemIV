@@ -69,12 +69,7 @@ sdcard_error_t sdcard_init(sdcard_device_t *device) {
         // check v2 SD card
         sdcard_receive_r7(&response);
 
-        if (!(
-            response.r7[0] == 0 &&
-            response.r7[1] == 0 &&
-            response.r7[2] == 1 &&
-            response.r7[3] == 0xAA
-        )) {
+        if (*((uint32_t *)&response.r7) != 0x1AA) {
             response.r1 = SDCARD_ERROR_ILLEGAL;
             goto ERROR;
         }
@@ -136,10 +131,7 @@ DONE:
 sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_data_token_t *token) {
     *token = SDCARD_DATA_TOKEN_NONE;
 
-    sdcard_command_t read;
-    read.index = 0x51;
-    read.arg = block;
-    read.crc = 0x00;
+    sdcard_command_t read = {0x51, block, 0x00};
 
     spi_cs_assert();
 
@@ -171,10 +163,7 @@ DONE:
 sdcard_error_t sdcard_read_block_n(uint32_t start, uint32_t count, uint8_t *buffer, sdcard_data_token_t *token) {
     *token = SDCARD_DATA_TOKEN_NONE;
 
-    sdcard_command_t multiread;
-    multiread.index = 0x52;
-    multiread.arg = start;
-    multiread.crc = 0x00;
+    sdcard_command_t multiread = {0x52, start, 0x00};
 
     spi_cs_assert();
 
@@ -201,10 +190,7 @@ sdcard_error_t sdcard_read_block_n(uint32_t start, uint32_t count, uint8_t *buff
         spi_read();
     }
 
-    sdcard_command_t stop;
-    stop.index = 0x4C;
-    stop.arg = 0x00;
-    stop.crc = 0x00;
+    sdcard_command_t stop = {0x4C, 0x00, 0x00};
 
     sdcard_send_command(&stop, &response);
     if (response.r1 != SDCARD_NOERR) {
@@ -221,10 +207,7 @@ DONE:
 sdcard_error_t sdcard_write_block(uint32_t block, uint8_t const buffer[512], sdcard_data_token_t *token) {
     *token = SDCARD_DATA_TOKEN_NONE;
 
-    sdcard_command_t write;
-    write.index = 0x58;
-    write.arg = block;
-    write.crc = 0x00;
+    sdcard_command_t write = {0x58, block, 0x00};
 
     spi_cs_assert();
 
@@ -260,10 +243,7 @@ DONE:
 sdcard_error_t sdcard_write_block_n(uint32_t start, uint32_t count, uint8_t const * buffer, sdcard_data_token_t *token) {
     *token = SDCARD_DATA_TOKEN_NONE;
 
-    sdcard_command_t multiwrite;
-    multiwrite.index = 0x59;
-    multiwrite.arg = start;
-    multiwrite.crc = 0x00;
+    sdcard_command_t multiwrite = {0x59, start, 0x00};
 
     spi_cs_assert();
 

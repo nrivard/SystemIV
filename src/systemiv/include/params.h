@@ -1,6 +1,7 @@
 #pragma once
 
 #define NPROC        16  // maximum number of processes
+#define PROCSZ   0xC000  // max size of each process
 #define NOFILE       16  // open files per process
 #define NFILE       100  // open files per system
 #define NINODE       50  // maximum number of active i-nodes

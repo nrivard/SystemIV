@@ -62,10 +62,11 @@ __attribute__ ((__noreturn__)) void sysmain() {
     serial_init();
     printf("%s", banner);
 
-    kinit();
+    proc_bootstrap();
+    // kinit();
 
     m68k_vector_table->user[5] = irq_timer;
-    m68k_vector_table->auto_vec[5] = ps2_recv;
+    // m68k_vector_table->auto_vec[5] = ps2_recv;
 
     // start init process
     // procs[0].pid = 0;
@@ -86,7 +87,7 @@ __attribute__ ((__noreturn__)) void sysmain() {
     // turn interrupts back on
     irq_on();
 
-    ps2_set_status(PS2_STATUS_IE);
+    // ps2_set_status(PS2_STATUS_IE);
 
     // DEBUG
     // while (1) {

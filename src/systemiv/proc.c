@@ -2,13 +2,17 @@
 
 #include "proc.h"
 
+#include "m68k.h"
 #include "kalloc.h"
 #include "printf.h"
 #include "string.h"
 
+extern uint8_t _proc_start[];
+
 proc_t procs[NPROC];
 
 static proc_t *initproc;
+static unsigned int curr;
 static int pid_next = 1;
 
 void proc_bootstrap() {
@@ -19,42 +23,60 @@ void proc_bootstrap() {
         panic("Couldn't bootstrap init process");
     }
 
-    strcpy(p->name, "init.d");
     p->status = PROC_RUNNABLE;
-    
+    strncpy(p->name, "init.d", sizeof(p->name));
+
     initproc = p;
 }
 
 // initializes a process
 // returns proc_t pointer if successful, NULL if not
 proc_t * proc_init() {
-    proc_t *proc = NULL;
-    
-    for (int i = 0; i < NPROC; i++) {
-        if (procs[i].status == PROC_UNUSED) {
-            proc = &procs[i];
+    unsigned int lane;
+    for (lane = 0; lane < NPROC; lane++) {
+        if (procs[lane].status == PROC_UNUSED) {
             break;
         }
     }
 
-    if (proc && 
-        ((proc->kstack = kalloc()) != NULL)
-    ) {
-        proc->status = PROC_INIT;
-        proc->pid = pid_next++;
-
-        memset(&proc->context, 0, sizeof(proc->context));
-        proc->context.sp = (uint32_t)proc->kstack + PGSIZE;
-
-        // // TODO: we need to copy values from the currently running process...
-        // proc->parent = &procs[parent_id];
+    if (lane >= NPROC) {
+        return NULL;
     }
+
+    proc_t *proc = &procs[lane];
+    proc_t *parent = proc_curr();
+
+    proc->status = PROC_INIT;
+    proc->pid = pid_next++;
+
+    memset(&proc->context, 0, sizeof(proc->context));
+    proc->parent = &procs[curr];
+    proc->context.sp = (uint32_t)(_proc_start + (PROCSZ * (lane + 1))); // set stack to top of process's addr space
+
+    // copy parent attr
+    strlcpy(proc->name, parent->name, sizeof(proc->name));
+
+    printf("proc %d: %l\n", lane, proc->context.sp);
+
+    // // TODO: we need to copy values from the currently running process...
 
     return  proc;
 }
 
-void proc_sched() {
-    for (int i = 0; i < NPROC; i++) {
-        
+proc_t *proc_sched() {
+    unsigned int next = curr;
+
+    for (int i = curr; i != curr; i = (i + 1) % NPROC) {
+        if (procs[i].status == PROC_RUNNABLE) {
+            next = i;
+            break;
+        }
     }
+
+    // if next == curr, nothing to switch to!
+    return (next == curr) ? NULL : &procs[next];
+}
+
+proc_t *proc_curr() {
+    return &procs[curr];
 }

@@ -40,3 +40,5 @@ SECTIONS
 
 _data_load_start = LOADADDR(.data);
 _data_load_end = _data_load_start + (_data_end - _data_start);
+
+PROVIDE(_proc_start = _os_end); /* alias for start of process space */

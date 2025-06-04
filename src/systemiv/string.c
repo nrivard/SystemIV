@@ -22,3 +22,29 @@ char *strcpy(char *dest, const char *src) {
     while ((*to++ = *src++));
     return dest;
 }
+
+char *strncpy(char *dest, const char *src, int n) {
+    int i = 0;
+
+    for ( ; i < n && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    
+    for ( ; i < n; i++) {
+        dest[i] = '\0';
+    }
+
+    return dest;
+}
+
+int strlcpy(char *dest, const char *src, int n) {
+    int i = 0;
+
+    for ( ; i < n - 1 && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+
+    dest[i] = '\0';
+
+    return i;
+}

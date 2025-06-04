@@ -9,6 +9,7 @@ MEMORY
   	MFP	: org = 0x00E00000, l = 1M
 }
 
-PROVIDE(_bootloader_start = 0x0080000); /* addr to load bootloader */
-PROVIDE(_os_start = 0x00000400);        /* addr to load OS */
+PROVIDE(_bootloader_start = 0x00080000); /* addr to load bootloader */
+PROVIDE(_os_start = 0x00000400);         /* addr to load OS */
+PROVIDE(_os_end = 0x00040000);			 /* addr of end of OS */
 PROVIDE(_phys_end = ORIGIN(RAM) + LENGTH(RAM));

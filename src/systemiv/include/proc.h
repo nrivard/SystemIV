@@ -14,6 +14,8 @@ typedef enum {
 } proc_status_t;
 
 typedef struct proc_ctx {
+    uint32_t pc;
+
     uint32_t d2;
     uint32_t d3;
     uint32_t d4;
@@ -28,7 +30,6 @@ typedef struct proc_ctx {
     uint32_t a6;
 
     uint32_t sp;
-    uint32_t pc;
 } proc_ctx_t;
 
 typedef struct proc {
@@ -39,7 +40,6 @@ typedef struct proc {
     proc_status_t status;
     struct proc_ctx context;
     char name[16];
-    char *kstack;            // bottom of kernel stack for this process
     // TODO: current dir
     // TODO: open files
 } proc_t;
@@ -52,5 +52,8 @@ void proc_bootstrap(void);
 // initializes a new process
 proc_t *proc_init(void);
 
-// schedules the next process
-void proc_sched(void);
+// returns the next process that should run
+proc_t *proc_sched(void);
+
+// returns the currently running process
+proc_t *proc_curr(void);

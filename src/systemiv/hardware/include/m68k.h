@@ -33,7 +33,7 @@ static m68k_vector_table_t * const m68k_vector_table = (m68k_vector_table_t *)((
 static inline uint16_t m68k_rd_sr() {
     uint16_t x;
     asm volatile (
-        "move.w   %%sr,%0" 
+        "move.w   %%sr, %0" 
         : "=d" (x)
         :
     );
@@ -42,28 +42,31 @@ static inline uint16_t m68k_rd_sr() {
 
 static inline void m68k_wr_sr(uint16_t sr) {
     asm volatile (
-        "move.w     %0,%%sr" 
+        "move.w     %0, %%sr" 
         : // no output
         : "d" (sr)
     );
 }
 
 static inline void m68k_save_ctx(proc_ctx_t *ctx) {
+    // save USP into D1, then copy d1-d7/a2-a6
     asm volatile (
-        "movem.l    %%d2-%%d7/%%a2-%%usp, %0\n\t" \
-        "move.l     %%usp, %1"
+        "move.l     %%usp, %%a0\n\t" \
+        "move.l     %%a0, %%d1\n\t"
+        "movem.l    %%d1-%%d7/%%a2-%%a6, %0\n\t" \
         : "=m" (*ctx), "=m" (ctx->sp)
         :
-        :
+        : "a0", "d1" // clobbers a0, d1
     );
 }
 
 static inline void m68k_load_ctx(proc_ctx_t *ctx) {
     asm volatile (
-        "move.l     %0, %%usp\n\t" \
-        "movem.l    %1, %%d2-%%d7/%%a2-%%a6"
-        : "=m" (ctx->sp), "=m" (*ctx)
+        "movem.l    %0, %%d1-%%d7/%%a2-%%a6\t\n"
+        "move.l     %%d1, %%a0\t\n"
+        "move.l     %%a0, %%usp"
+        : "=m" (*ctx)
         :
-        :
+        : "a0", "d1"
     );
 }
