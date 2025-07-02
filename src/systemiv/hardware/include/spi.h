@@ -1,5 +1,8 @@
 #pragma once
 
+#define spigate_data            ((volatile uint8_t * const)(0x800001))
+#define spigate_cmd             ((volatile uint8_t * const)(0x800003))
+
 typedef enum {
     spi_speed_fastest = 0,
     spi_speed_div_8,

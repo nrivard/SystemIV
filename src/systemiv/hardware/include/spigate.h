@@ -2,9 +2,6 @@
 
 #include <stdint.h>
 
-#define spigate_data            ((volatile uint8_t * const)(0x800001))
-#define spigate_cmd             ((volatile uint8_t * const)(0x800003))
-
 #define SPIGATE_CMD_CLK_SEL     0b00000011
 #define SPIGATE_CMD_DEV_SEL     0b00001100
 #define SPIGATE_CMD_DEN         0b00010000

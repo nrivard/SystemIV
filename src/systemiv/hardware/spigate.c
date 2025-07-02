@@ -1,3 +1,5 @@
+#ifdef SPIGATE
+
 #include "spigate.h"
 
 void spigate_init() {
@@ -28,3 +30,5 @@ void spigate_deassert() {
     cmd &= ~SPIGATE_CMD_DEN;
     *spigate_cmd = cmd;
 }
+
+#endif

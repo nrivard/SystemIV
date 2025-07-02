@@ -1,0 +1,25 @@
+{
+    "[m68k]": {
+        "editor.rulers": []
+    },
+    "files.associations": {
+        "sdcard.h": "c",
+        "xmodem.h": "c",
+        "serial.h": "c",
+        "stdint.h": "c",
+        "time.h": "c",
+        "spi.h": "c",
+        "mfp.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "vector": "c",
+        "kalloc.h": "c",
+        "stdarg.h": "c",
+        "printf.h": "c",
+        "proc.h": "c",
+        "ctype.h": "c",
+        "__locale": "c",
+        "somi.h": "c"
+    }
+}

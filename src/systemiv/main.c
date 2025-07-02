@@ -8,6 +8,8 @@
 #include "sdcard.h"
 #include "serial.h"
 #include "vm.h"
+#include "ymf262.h"
+#include "vgm.h"
 
 #include "ps2.h"
 
@@ -62,6 +64,13 @@ __attribute__ ((__noreturn__)) void sysmain() {
     serial_init();
     printf("%s", banner);
 
+    opl_device_t sndcard;
+    if (opl_init(&sndcard)) {
+        printf("No OPL device found!\n");
+    } else {
+        printf("found OPL%d device\n", sndcard.type);
+    }
+
     proc_bootstrap();
     // kinit();
 
@@ -86,6 +95,9 @@ __attribute__ ((__noreturn__)) void sysmain() {
 
     // turn interrupts back on
     irq_on();
+
+    vgm_play();
+    // ymf262_play_test();
 
     // ps2_set_status(PS2_STATUS_IE);
 
