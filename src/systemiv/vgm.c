@@ -5,7 +5,6 @@
 #include "printf.h"
 #include "stddef.h"
 #include "string.h"
-#include "somi.h"
 #include "ymf262.h"
 
 typedef enum {
@@ -41,8 +40,8 @@ void vgm_destroy_timer() {
     *mfp_iera &= ~MFP_IRQ_TIMERS_AC;
 }
 
-void vgm_play() {
-    vgm_header_t *header = (vgm_header_t *)somi_vgm;
+void vgm_play(uint8_t *vgm_data, uint32_t len) {
+    vgm_header_t *header = (vgm_header_t *)vgm_data;
     if (strncmp(header->ident, "Vgm ", 4)) {
         printf("Not a vgm file!");
         return;
@@ -66,7 +65,7 @@ void vgm_play() {
 
     sample_status = VGM_SAMPLE_IDLE;
     sample_wait = 0;
-    for (uint32_t idx = vgmOffset; vgmOffset < eof; ) {
+    for (uint32_t idx = vgmOffset; vgmOffset < eof && vgmOffset < len; ) {
         while (sample_status) ; // wait until sample has been processed
         sample_status = VGM_SAMPLE_PROCESSED;
 
@@ -75,16 +74,16 @@ void vgm_play() {
             continue;
         }
 
-        uint8_t cmd = somi_vgm[idx];
+        uint8_t cmd = vgm_data[idx];
         switch (cmd) {
             case 0x61:
-                sample_wait = somi_vgm[idx + 1] | (somi_vgm[idx + 2] << 8); // little endian
+                sample_wait = vgm_data[idx + 1] | (vgm_data[idx + 2] << 8); // little endian
                 idx += 2;
                 break;
 
             case 0x5A:
-                uint8_t reg = somi_vgm[++idx];
-                uint8_t val = somi_vgm[++idx];
+                uint8_t reg = vgm_data[++idx];
+                uint8_t val = vgm_data[++idx];
                 opl_write(reg, val);
                 break;
 

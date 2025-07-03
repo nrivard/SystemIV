@@ -30,7 +30,6 @@ static inline void opl_write(uint16_t reg, uint8_t data) {
     *ymf262_index = reg;
 
     asm volatile(
-        "nop\n" \
         "nop"
         :
         :
@@ -39,7 +38,6 @@ static inline void opl_write(uint16_t reg, uint8_t data) {
     *ymf262_data = data;
 
     asm volatile(
-        "nop\n" \
         "nop"
         :
         :

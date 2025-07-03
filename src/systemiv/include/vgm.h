@@ -32,4 +32,5 @@ typedef struct {
 
 } __attribute__((packed)) vgm_header_t;
 
-void vgm_play(void);
+// play a song with data and maximum length `len`
+void vgm_play(uint8_t *vgm_data, uint32_t len);
