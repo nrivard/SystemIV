@@ -29,19 +29,11 @@ static inline void opl_write(uint16_t reg, uint8_t data) {
     // TODO: do work for table 2 registers!
     *ymf262_index = reg;
 
-    asm volatile(
-        "nop"
-        :
-        :
-    );
+    asm volatile("nop");
 
     *ymf262_data = data;
 
-    asm volatile(
-        "nop"
-        :
-        :
-    );
+    asm volatile("nop");
 }
 
 static inline unsigned char opl_read() {

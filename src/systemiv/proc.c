@@ -11,8 +11,8 @@ extern uint8_t _proc_start[];
 
 proc_t procs[NPROC];
 
-static proc_t *initproc;
-static unsigned int curr;
+static proc_t *initproc = NULL;
+static unsigned int curr = 0;
 static int pid_next = 1;
 
 void proc_bootstrap() {
@@ -31,7 +31,7 @@ void proc_bootstrap() {
 
 // initializes a process
 // returns proc_t pointer if successful, NULL if not
-proc_t * proc_init() {
+proc_t *proc_init() {
     unsigned int lane;
     for (lane = 0; lane < NPROC; lane++) {
         if (procs[lane].status == PROC_UNUSED) {
@@ -58,7 +58,7 @@ proc_t * proc_init() {
 
     printf("proc %d: %l\n", lane, proc->context.sp);
 
-    // // TODO: we need to copy values from the currently running process...
+    // TODO: we need to copy values from the currently running process...
 
     return  proc;
 }
@@ -73,8 +73,7 @@ proc_t *proc_sched() {
         }
     }
 
-    // if next == curr, nothing to switch to!
-    return (next == curr) ? NULL : &procs[next];
+    return &procs[next];
 }
 
 proc_t *proc_curr() {

@@ -36,17 +36,17 @@ static const char banner[] = \
 static uint8_t system_jiffies = 0;
 static uint32_t system_uptime = 0;
 
-char buffer[128];
-char *start = buffer;
-char *end = buffer;
-
 __attribute__((interrupt)) void irq_timer() {
+    m68k_save_ctx(&proc_curr()->context);
+
     system_jiffies++;
     if (system_jiffies == 100) {
         system_jiffies = 0;
         system_uptime++;
     }
     mfp_irq_ack_timerc();
+
+    m68k_load_ctx(&proc_sched()->context);
 }
 
 __attribute__((interrupt)) void ps2_recv() {
@@ -63,13 +63,6 @@ __attribute__ ((__noreturn__)) void sysmain() {
     // bring serial port up first
     serial_init();
     printf("%s", banner);
-
-    opl_device_t sndcard;
-    if (opl_init(&sndcard)) {
-        printf("No OPL device found!\n");
-    } else {
-        printf("found OPL%d device\n", sndcard.type);
-    }
 
     proc_bootstrap();
     // kinit();
@@ -95,9 +88,6 @@ __attribute__ ((__noreturn__)) void sysmain() {
 
     // turn interrupts back on
     irq_on();
-
-    vgm_play();
-    // ymf262_play_test();
 
     // ps2_set_status(PS2_STATUS_IE);
 
