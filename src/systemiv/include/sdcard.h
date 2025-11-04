@@ -1,6 +1,8 @@
 #pragma once
 
+#include <device.h>
 #include <stdint.h>
+#include <oserr.h>
 
 typedef enum {
     SDCARD_STATUS_UNKNOWN = 0,
@@ -66,37 +68,7 @@ typedef struct {
     sdcard_device_type_t type;
 } __attribute__((packed)) sdcard_device_t;
 
-sdcard_error_t sdcard_init(sdcard_device_t *device);
-
-/// @brief 
-/// @param block    block number to read from
-/// @param buffer   512 byte buffer to copy data to
-/// @param token 
-/// @return error code. will contain `SDCARD_ERROR_FOUND` if error was found. read `token` for possible error reason
-sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_data_token_t *token);
-
-/// @brief 
-/// @param start    starting block number to read from
-/// @param count    how many contiguous blocks to read
-/// @param buffer   a buffer that is at least `512 * count` bytes long. It is up to you that this is safe!
-/// @param token 
-/// @return error code. will contain `SDCARD_ERROR_FOUND` if error was found. read `token` for possible error reason
-sdcard_error_t sdcard_read_block_n(uint32_t start, uint32_t count, uint8_t *buffer, sdcard_data_token_t *token);
-
-/// @brief 
-/// @param block    block number to write to
-/// @param buffer   block of 512 bytes to write. ALL 512 will get written!
-/// @param token    
-/// @return error code. will contain `SDCARD_ERROR_FOUND` if error was found. read `token` for possible error reason
-sdcard_error_t sdcard_write_block(uint32_t block, uint8_t const buffer[512], sdcard_data_token_t *token);
-
-/// @brief 
-/// @param start    starting block number to write to
-/// @param count    how many contiguous blocks to write
-/// @param buffer   a buffer that is at least `512 * count` bytes long. It is up to you that this is safe!
-/// @param token 
-/// @return error code. will contain `SDCARD_ERROR_FOUND` if error was found. read `token` for possible error reason
-sdcard_error_t sdcard_write_block_n(uint32_t start, uint32_t count, uint8_t const * buffer, sdcard_data_token_t *token);
+oserr_t sdcard_init(device_t *device);
 
 /// @brief returns a user-facing device type string
 /// @param type 

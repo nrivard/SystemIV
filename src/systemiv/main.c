@@ -1,4 +1,6 @@
+#include <device.h>
 #include <stdint.h>
+#include <oserr.h>
 
 #include "irq.h"
 #include "kalloc.h"
@@ -76,15 +78,28 @@ __attribute__ ((__noreturn__)) void sysmain() {
 
     // kvminit();
 
-    // serial_put_string("Searching for disk...");
-    // sdcard_device_t disk;
-    // if (sdcard_init(&disk) != SDCARD_NOERR || disk.status != SDCARD_STATUS_READY || disk.type == SDCARD_DEVICE_NONE) {
-    //     serial_put_string("not found\n");
-    // } else {
-    //     serial_put_string("found ");
-    //     serial_put_string(sdcard_device_type_msg(disk.type));
-    //     serial_put_string("\n");
-    // }
+    printf("Searching for disk...");
+    oserr_t err = NOERR;
+    device_t sdcard;
+    if ((err = sdcard_init(&sdcard)) != NOERR) {
+        printf("not found\nError: %d\n", err);
+    } else {
+        printf("found.\n");
+        char buffer[512];
+        sdcard_data_token_t token;
+        err = sdcard.read_blk(0, buffer, &token);
+        if (err == NOERR) {
+            for (int i = 0; i < 512; i++) {
+                if (i % 16 == 0) {
+                    printf("\n");
+                }
+
+                printf("%d ", buffer[i]);
+            }
+        } else {
+            printf("Error: %d, token: %d\n", err, token);
+        }
+    }
 
     // turn interrupts back on
     irq_on();

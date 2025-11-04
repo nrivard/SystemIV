@@ -1,4 +1,6 @@
+#include <ctype.h>
 #include <stdint.h>
+#include <string.h>
 // #include <time.h>
 
 #include "sdcard.h"
@@ -35,100 +37,9 @@ static const char* sdcard_device_type_msgs[] = {
     "SD card V2 XC"
 };
 
-sdcard_error_t sdcard_init(sdcard_device_t *device) {
-    device->status = SDCARD_STATUS_UNKNOWN;
-    device->type = SDCARD_DEVICE_NONE;
+oserr_t sdcard_read_block(unsigned int block, char buffer[512], void *ctx) {
+    sdcard_data_token_t *token = ctx;
 
-    spi_init();
-
-    // toggle ENABLE to sync card timing up
-    spi_cs_assert();
-    spi_cs_deassert();
-
-    // get sd card into spi mode with CS de-asserted
-    for (int i = 0; i < 10; i++) {
-        spi_read();
-    }
-
-    spi_cs_assert();
-
-    sdcard_response_t response;
-    sdcard_send_command(&CMD0, &response);
-    if (response.r1 != SDCARD_ERROR_IDLE) {
-        goto ERROR;
-    }
-
-    sdcard_send_command(&CMD8, &response);
-    if (response.r1 == SDCARD_ERROR_ILLEGAL) {
-        // v1 SD card
-        device->type = SDCARD_DEVICE_V1;
-
-        // set to idle for next phase
-        response.r1 = SDCARD_ERROR_IDLE;
-    } else if (response.r1 == SDCARD_ERROR_IDLE) {
-        // check v2 SD card
-        sdcard_receive_r7(&response);
-
-        if (*((uint32_t *)&response.r7) != 0x1AA) {
-            response.r1 = SDCARD_ERROR_ILLEGAL;
-            goto ERROR;
-        }
-
-        // assume SC until we check later
-        device->type = SDCARD_DEVICE_V2_SC;
-    } else {
-        goto ERROR;
-    }
-
-    for (int tries = 0x20; response.r1 == SDCARD_ERROR_IDLE && tries >= 0; --tries) {
-        sdcard_send_app_command(&CMD41, &response);
-        switch (response.r1) {
-            case SDCARD_NOERR:
-                break;
-            case SDCARD_ERROR_IDLE:
-                // TODO: restore!
-                // delay(5);
-                continue;
-            default:
-                goto ERROR;
-        }
-    }
-
-    // get OCR to see if XC or SC
-    if (device->type > SDCARD_DEVICE_V1) {
-        sdcard_send_command(&CMD58, &response);
-        if (response.r1 != SDCARD_NOERR) {
-            goto ERROR;
-        }
-        sdcard_receive_r7(&response);
-        device->type = response.r7[0] & SDCARD_OCR_CCS ? SDCARD_DEVICE_V2_XC : SDCARD_DEVICE_V2_SC;
-    }
-
-    // if v1 or SC, set to 512 byte blocks
-    if (device->type < SDCARD_DEVICE_V2_XC) {
-        sdcard_send_command(&CMD16, &response);
-        if (response.r1 != SDCARD_NOERR) {
-            goto ERROR;
-        }
-    }
-
-    // turn on fastest speed
-    spi_set_speed(spi_speed_fastest);
-
-    // initialized and device type is set. response.r1 is already NOERR
-    device->status = SDCARD_STATUS_READY;
-    goto DONE;
-
-ERROR:
-    device->status = SDCARD_STATUS_FAILED;
-    device->type = SDCARD_DEVICE_NONE;
-
-DONE:
-    spi_cs_deassert();
-    return response.r1;
-}
-
-sdcard_error_t sdcard_read_block(uint32_t block, uint8_t buffer[512], sdcard_data_token_t *token) {
     *token = SDCARD_DATA_TOKEN_NONE;
 
     sdcard_command_t read = {0x51, block, 0x00};
@@ -160,7 +71,9 @@ DONE:
     return response.r1;
 }
 
-sdcard_error_t sdcard_read_block_n(uint32_t start, uint32_t count, uint8_t *buffer, sdcard_data_token_t *token) {
+oserr_t sdcard_read_block_n(unsigned int start, unsigned int count, char *buffer, void *ctx) {
+    sdcard_data_token_t *token = ctx;
+
     *token = SDCARD_DATA_TOKEN_NONE;
 
     sdcard_command_t multiread = {0x52, start, 0x00};
@@ -204,7 +117,9 @@ DONE:
     return response.r1;
 }
 
-sdcard_error_t sdcard_write_block(uint32_t block, uint8_t const buffer[512], sdcard_data_token_t *token) {
+oserr_t sdcard_write_block(unsigned int block, char const buffer[512], void *ctx) {
+    sdcard_data_token_t *token = ctx;
+
     *token = SDCARD_DATA_TOKEN_NONE;
 
     sdcard_command_t write = {0x58, block, 0x00};
@@ -240,7 +155,9 @@ DONE:
     return response.r1;
 }
 
-sdcard_error_t sdcard_write_block_n(uint32_t start, uint32_t count, uint8_t const * buffer, sdcard_data_token_t *token) {
+oserr_t sdcard_write_block_n(unsigned int start, unsigned int count, char const * buffer, void *ctx) {
+    sdcard_data_token_t *token = ctx;
+
     *token = SDCARD_DATA_TOKEN_NONE;
 
     sdcard_command_t multiwrite = {0x59, start, 0x00};
@@ -276,6 +193,104 @@ sdcard_error_t sdcard_write_block_n(uint32_t start, uint32_t count, uint8_t cons
 
     spi_transfer(SDCARD_DATA_TOKEN_STOP);
     *token = sdcard_wait_busy();
+
+DONE:
+    spi_cs_deassert();
+    return response.r1;
+}
+
+oserr_t sdcard_init(device_t *device) {
+    if (device == NULL) {
+        return ERR_NULL_PTR;
+    }
+
+    memset(device, 0, sizeof(device_t));
+
+    sdcard_device_type_t type = SDCARD_DEVICE_NONE;
+
+    spi_init();
+
+    // toggle ENABLE to sync card timing up
+    spi_cs_assert();
+    spi_cs_deassert();
+
+    // get sd card into spi mode with CS de-asserted
+    for (int i = 0; i < 10; i++) {
+        spi_read();
+    }
+
+    spi_cs_assert();
+
+    sdcard_response_t response;
+    sdcard_send_command(&CMD0, &response);
+    if (response.r1 > SDCARD_ERROR_IDLE) {
+        goto DONE;
+    }
+
+    sdcard_send_command(&CMD8, &response);
+    if (response.r1 == SDCARD_ERROR_ILLEGAL) {
+        // v1 SD card
+        type = SDCARD_DEVICE_V1;
+
+        // set to idle for next phase
+        response.r1 = SDCARD_ERROR_IDLE;
+    } else if (response.r1 == SDCARD_ERROR_IDLE) {
+        // check v2 SD card
+        sdcard_receive_r7(&response);
+
+        if (*((uint32_t *)&response.r7) != 0x1AA) {
+            response.r1 = SDCARD_ERROR_ILLEGAL;
+            goto DONE;
+        }
+
+        // assume SC until we check later
+        type = SDCARD_DEVICE_V2_SC;
+    } else {
+        goto DONE;
+    }
+
+    for (int tries = 0x20; response.r1 == SDCARD_ERROR_IDLE && tries >= 0; --tries) {
+        sdcard_send_app_command(&CMD41, &response);
+        switch (response.r1) {
+            case SDCARD_NOERR:
+                break;
+            case SDCARD_ERROR_IDLE:
+                // TODO: restore!
+                // delay(5);
+                continue;
+            default:
+                goto DONE;
+        }
+    }
+
+    // get OCR to see if XC or SC
+    if (type > SDCARD_DEVICE_V1) {
+        sdcard_send_command(&CMD58, &response);
+        if (response.r1 != SDCARD_NOERR) {
+            goto DONE;
+        }
+        sdcard_receive_r7(&response);
+        type = response.r7[0] & SDCARD_OCR_CCS ? SDCARD_DEVICE_V2_XC : SDCARD_DEVICE_V2_SC;
+    }
+
+    // if v1 or SC, set to 512 byte blocks
+    if (type < SDCARD_DEVICE_V2_XC) {
+        sdcard_send_command(&CMD16, &response);
+        if (response.r1 != SDCARD_NOERR) {
+            goto DONE;
+        }
+    }
+
+    // turn on fastest speed
+    spi_set_speed(spi_speed_div_8);
+
+    // initialized and device type is set. response.r1 is already NOERR
+    // set up device metadata
+    device->blk_size = 512;
+    device->read_blk = sdcard_read_block;
+    device->read_blk_n = sdcard_read_block_n;
+    device->write_blk = sdcard_write_block;
+    device->write_blk_n = sdcard_write_block_n;
 
 DONE:
     spi_cs_deassert();

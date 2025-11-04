@@ -20,6 +20,8 @@
         "proc.h": "c",
         "ctype.h": "c",
         "__locale": "c",
-        "somi.h": "c"
+        "somi.h": "c",
+        "spigate.h": "c",
+        "cstring": "c"
     }
 }

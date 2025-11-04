@@ -2,10 +2,10 @@
 
 #include <stdint.h>
 
-typedef struct {
-    int (*read)(int, uint64_t, int);
-    int (*write)(int, uint64_t, int);
-} device_t;
+// typedef struct {
+//     int (*read)(int file, uint8_t * buffer, int count);
+//     int (*write)(int file, uint8_t *buffer, int count);
+// } device_t;
 
 typedef enum {
     FILE_TYPE_NONE = 0,
@@ -20,5 +20,3 @@ typedef struct {
     char readable;
     char writeable;
 } file_t;
-
-extern device_t devices[];

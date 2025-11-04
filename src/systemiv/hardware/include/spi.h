@@ -1,12 +1,9 @@
 #pragma once
 
-#define spigate_data            ((volatile uint8_t * const)(0x800001))
-#define spigate_cmd             ((volatile uint8_t * const)(0x800003))
-
 typedef enum {
     spi_speed_fastest = 0,
     spi_speed_div_8,
-    spi_speed_div_16,
+    spi_speed_div_32,
     spi_speed_slowest
 } spi_speed_t;
 
