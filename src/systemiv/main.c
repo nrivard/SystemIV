@@ -1,6 +1,9 @@
+#include <ctype.h>
 #include <device.h>
 #include <stdint.h>
 #include <oserr.h>
+
+#include <mfp.h>
 
 #include "irq.h"
 #include "kalloc.h"
@@ -63,7 +66,12 @@ __attribute__ ((__noreturn__)) void sysmain() {
     for (uint16_t *bss = &_bss_start; bss < &_bss_end; *bss++ = 0);
 
     // bring serial port up first
-    serial_init();
+    device_t serial;
+    if (!serial_init(&serial)) {
+        device_add(&serial, NULL);
+    }
+
+
     printf("%s", banner);
 
     proc_bootstrap();
